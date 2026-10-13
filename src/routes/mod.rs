@@ -11,6 +11,7 @@ mod deps;
 mod import;
 mod me;
 mod setup;
+mod stats;
 mod tasks;
 mod week;
 
@@ -44,6 +45,8 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/my-week", get(week::my_week))
         .route("/api/time-entries", post(week::log_hours))
         .route("/api/import", post(import::import_asana))
+        .route("/api/load", get(stats::load))
+        .route("/api/alerts", get(stats::alerts))
         .nest_service("/mcp", mcp_service)
         .fallback(crate::web::fallback)
         .with_state(state)
