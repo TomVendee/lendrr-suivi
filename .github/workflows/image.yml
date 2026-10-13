@@ -22,9 +22,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag = sha court (ou tag git)
+      - name: Tag = sha court (ou tag git), repo en minuscules (ghcr.io l'exige)
         id: tag
         run: |
+          echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT";
           else echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; fi
       - uses: docker/build-push-action@v6
@@ -32,4 +33,4 @@ jobs:
           context: .
           push: true
           # Jamais `latest` (D10) : tag versionné ou SHA.
-          tags: ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.tag }}
+          tags: ghcr.io/${{ steps.tag.outputs.repo }}:${{ steps.tag.outputs.tag }}

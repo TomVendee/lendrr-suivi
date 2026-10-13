@@ -1,6 +1,6 @@
 {
   "name": "lendrr-suivi",
-  "image": { "repository": "ghcr.io/REMPLACER/lendrr-suivi", "tag": "REMPLACER" },
+  "image": { "repository": "ghcr.io/tomvendee/lendrr-suivi", "tag": "REMPLACER" },
   "replicas": 1,
   "resources": { "limits": { "cpu": "200m", "memory": "256Mi" } },
   "service": { "port": 80, "target_port": 8080 },
