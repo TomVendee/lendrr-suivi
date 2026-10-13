@@ -10,7 +10,6 @@ use sqlx::PgPool;
 mod deps;
 mod import;
 mod me;
-mod mcp;
 mod setup;
 mod tasks;
 mod week;
@@ -26,7 +25,8 @@ pub fn router(pool: PgPool) -> Router {
 }
 
 pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
-    let state = AppState { pool, setup_code };
+    let state = AppState { pool: pool.clone(), setup_code };
+    let mcp_service = crate::mcp::streamable_service(pool);
     Router::new()
         .route("/health", get(health))
         .route("/ready", get(ready))
@@ -34,6 +34,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/me", get(me::me))
         .route("/api/login", post(me::login))
         .route("/api/logout", post(me::logout))
+        .route("/api/tokens", post(me::create_token))
         .route("/setup", post(setup::setup))
         .route("/api/tasks", get(tasks::list).post(tasks::create))
         .route("/api/tasks/{id}", get(tasks::get).put(tasks::update))
@@ -43,7 +44,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/my-week", get(week::my_week))
         .route("/api/time-entries", post(week::log_hours))
         .route("/api/import", post(import::import_asana))
-        .route("/mcp", post(mcp::not_ready_yet))
+        .nest_service("/mcp", mcp_service)
         .fallback(crate::web::fallback)
         .with_state(state)
 }

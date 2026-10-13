@@ -15,12 +15,15 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 - `POST /mcp`, protocole **Streamable HTTP** (`rmcp`, `legacy_session_mode = false`,
   mode **stateless** : pas de `LocalSessionManager`, compatible répliques ≤ 3 et restarts).
 - Monté sur la même Application/Endpoint Cassiopée (un seul endpoint, `path` transmis tel quel).
-- En attendant l'implémentation (après F5) : `501 {"error":"mcp-not-ready"}`.
+- État au 14/10/2026 : **en service** (`initialize`, `tools/list`, `tools/call`), 3 outils :
+  `my_week`, `list_tasks`, `log_hours`. Les autres outils du tableau arrivent avec leurs
+  fonctions (F6→F11).
 
 ## Authentification
 
 - `Authorization: Bearer ls_< base64url(32 octets) >`, token personnel créé par
-  l'utilisateur (Réglages › Accès IA, ou route pilote en attendant l'écran).
+  l'utilisateur via `POST /api/tokens` (réponse : le token en clair **une seule fois**).
+  Réglages › Accès IA affichera la même chose quand l'écran existera.
 - Stocké **hashé SHA-256** en base (`api_tokens`), révocable (`revoked`), scopes `full`
   (V1 : le rôle fait foi, pas de scopes fins).
 - Le handler lit le header via `Extension<Parts>` et résout `(user_id, role)` comme la REST

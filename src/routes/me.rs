@@ -84,3 +84,26 @@ pub async fn me(State(s): State<AppState>, headers: HeaderMap) -> impl IntoRespo
         None => (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response(),
     }
 }
+
+/// Crée un token API/MCP personnel, affiché **une seule fois** (D18).
+/// Stocké hashé SHA-256, révocable. Sert aussi au MCP (`Authorization: Bearer`).
+pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    use base64::Engine;
+    use rand::RngCore;
+    let mut raw = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut raw);
+    let token = format!("ls_{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw));
+    let digest = {
+        use sha2::{Digest, Sha256};
+        format!("{:x}", Sha256::digest(token.as_bytes()))
+    };
+    let _ = sqlx::query("INSERT INTO api_tokens (user_id, token_hash) VALUES ($1,$2)")
+        .bind(uid)
+        .bind(digest)
+        .execute(&s.pool)
+        .await;
+    (StatusCode::CREATED, Json(json!({"token": token}))).into_response()
+}

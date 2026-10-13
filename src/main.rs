@@ -6,6 +6,7 @@ mod auth;
 mod config;
 mod db;
 mod domain;
+mod mcp;
 mod routes;
 mod web;
 
