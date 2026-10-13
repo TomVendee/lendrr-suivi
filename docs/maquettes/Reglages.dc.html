@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Réglages</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F7}
+a{color:#202326}a:hover{color:#1E40AF}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #F4F5F7; color: #202326; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<nav aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 100%; background: #202326; color: #F4F5F7; padding: 28px 16px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.01em">Suivi projet</div>
+<div style="font-size: 13px; color: #B9BEC4">Projet : LENDRR</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="MaSemaine.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Ma semaine</a>
+<a href="Taches.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg><span style="flex: 1">Tâches</span><span style="min-width: 24px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #2D5BD7; color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></a>
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"></circle><path d="M8 2v1.5M2 9h1.5M3.8 4.8l1 1M12.2 4.8l-1 1M9 19h9a4 4 0 0 0 0-8 5 5 0 0 0-9.5 1.5A3.3 3.3 0 0 0 9 19z"></path></svg>Météo</a>
+<a href="PlanDeCharge.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Plan de charge</a>
+<a href="Graphes.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-5 3 3 6-7"></path></svg>Graphes</a>
+<a href="Gantt.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M7 12h10M12 19h9"></path></svg>Gantt</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9zM10 20.5a2 2 0 0 0 4 0"></path></svg><span style="flex: 1">Alertes</span><span style="min-width: 24px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #3A3F44; color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">4</span></a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>Synthèse et export</a>
+<a href="Reglages.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #33383D; color: #FFFFFF; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8FB0FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>Réglages</a>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: #2B2F33">
+<div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 50%; background: #2D5BD7; color: #FFFFFF; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center">TA</div>
+<div style="display: flex; flex-direction: column">
+<span style="font-weight: 600; font-size: 14px">Tom A.</span>
+<span style="font-size: 12px; color: #B9BEC4">Chef de projet</span>
+</div>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px; max-width: 1040px">
+
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px; letter-spacing: -0.01em">Réglages</h1>
+<p style="margin: 0; color: #5C6268">Projet LENDRR · seul le chef de projet peut modifier ces options</p>
+</header>
+
+<section aria-labelledby="validation-titre" style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 8px 24px 12px; display: flex; flex-direction: column">
+<h2 id="validation-titre" style="margin: 14px 0 4px; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Validation des tâches</h2>
+
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ECEEF1">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span id="lbl-validation" style="font-weight: 600">Validation obligatoire par le chef de projet</span>
+<span style="font-size: 14px; color: #5C6268">Une tâche créée ou proposée n'apparaît chez ses collaborateurs (Ma semaine, plan de charge, alertes) qu'après validation.</span>
+</div>
+<button type="button" role="switch" aria-checked="{{validation}}" aria-labelledby="lbl-validation" onClick="{{basculerValidation}}" style="flex: 0 0 auto; width: 52px; height: 30px; padding: 3px; border: 0; border-radius: 15px; cursor: pointer; display: flex; {{interValidation.piste}}"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.25); {{interValidation.bouton}}"></span></button>
+</div>
+
+<sc-if value="{{validation}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ECEEF1">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span id="lbl-revalider" style="font-weight: 600">Revalider après une modification</span>
+<span style="font-size: 14px; color: #5C6268">Si les dates, les heures ou les collaborateurs changent, la tâche repasse en attente. L'ancienne version reste affichée jusqu'à la validation.</span>
+</div>
+<button type="button" role="switch" aria-checked="{{revalider}}" aria-labelledby="lbl-revalider" onClick="{{basculerRevalider}}" style="flex: 0 0 auto; width: 52px; height: 30px; padding: 3px; border: 0; border-radius: 15px; cursor: pointer; display: flex; {{interRevalider.piste}}"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.25); {{interRevalider.bouton}}"></span></button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 16px 0; border-bottom: 1px solid #ECEEF1">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="validateur" style="font-weight: 600; font-size: 14px">Validateur</label>
+<select id="validateur" style="height: 44px; padding: 0 10px; border: 1px solid #A9AFB5; border-radius: 8px; background: #FFFFFF; color: #202326; font: inherit">
+<option>Tom A. (chef de projet)</option>
+<option>Tom G.</option>
+<option>Sophie</option>
+<option>Erwen</option>
+<option>Djessen</option>
+<option>Reda</option>
+</select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="suppleant" style="font-weight: 600; font-size: 14px">Suppléant en cas d'absence</label>
+<select id="suppleant" style="height: 44px; padding: 0 10px; border: 1px solid #A9AFB5; border-radius: 8px; background: #FFFFFF; color: #202326; font: inherit">
+<option>Aucun</option>
+<option>Tom G.</option>
+<option>Sophie</option>
+<option>Erwen</option>
+<option>Djessen</option>
+<option>Reda</option>
+</select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="rappel" style="font-weight: 600; font-size: 14px">Me rappeler une tâche en attente après</label>
+<select id="rappel" style="height: 44px; padding: 0 10px; border: 1px solid #A9AFB5; border-radius: 8px; background: #FFFFFF; color: #202326; font: inherit">
+<option>1 jour</option>
+<option selected>2 jours</option>
+<option>3 jours</option>
+<option>Jamais</option>
+</select>
+</div>
+</div>
+</sc-if>
+
+<fieldset style="border: 0; margin: 0; padding: 16px 0 8px; display: flex; flex-direction: column; gap: 10px">
+<legend style="padding: 0; font-weight: 600">Qui peut créer ou proposer une tâche ?</legend>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 32px; cursor: pointer">
+<input type="radio" name="proposeur" checked="{{tousProposent}}" onChange="{{choisirTous}}" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #2D5BD7">
+<span><span style="font-weight: 500">Tout le monde</span> <span style="font-size: 14px; color: #5C6268">· les membres proposent, le chef de projet valide</span></span>
+</label>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 32px; cursor: pointer">
+<input type="radio" name="proposeur" checked="{{piloteSeul}}" onChange="{{choisirPilote}}" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #2D5BD7">
+<span><span style="font-weight: 500">Chef de projet seulement</span> <span style="font-size: 14px; color: #5C6268">· les membres peuvent seulement saisir leurs heures et leur statut</span></span>
+</label>
+</fieldset>
+</section>
+
+<section aria-labelledby="assign-titre" style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 8px 24px 12px; display: flex; flex-direction: column">
+<h2 id="assign-titre" style="margin: 14px 0 4px; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Collaborateurs par tâche</h2>
+
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ECEEF1">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span id="lbl-multi" style="font-weight: 600">Plusieurs collaborateurs par tâche</span>
+<span style="font-size: 14px; color: #5C6268">Chaque collaborateur a ses propres heures prévues, qui comptent dans son plan de charge.</span>
+</div>
+<button type="button" role="switch" aria-checked="{{multi}}" aria-labelledby="lbl-multi" onClick="{{basculerMulti}}" style="flex: 0 0 auto; width: 52px; height: 30px; padding: 3px; border: 0; border-radius: 15px; cursor: pointer; display: flex; {{interMulti.piste}}"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.25); {{interMulti.bouton}}"></span></button>
+</div>
+
+<sc-if value="{{multi}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 16px 0; border-bottom: 1px solid #ECEEF1">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span id="lbl-pilote" style="font-weight: 600">Un pilote obligatoire, les autres en appui</span>
+<span style="font-size: 14px; color: #5C6268">Le pilote répond de la tâche et reçoit les alertes de retard ; une tâche sans pilote ne peut pas être validée.</span>
+</div>
+<button type="button" role="switch" aria-checked="{{pilote}}" aria-labelledby="lbl-pilote" onClick="{{basculerPilote}}" style="flex: 0 0 auto; width: 52px; height: 30px; padding: 3px; border: 0; border-radius: 15px; cursor: pointer; display: flex; {{interPilote.piste}}"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: #FFFFFF; box-shadow: 0 1px 2px rgba(0,0,0,0.25); {{interPilote.bouton}}"></span></button>
+</div>
+<fieldset style="border: 0; margin: 0; padding: 16px 0 8px; display: flex; flex-direction: column; gap: 10px">
+<legend style="padding: 0; font-weight: 600">Heures prévues</legend>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 32px; cursor: pointer">
+<input type="radio" name="heures" checked="{{heuresParPersonne}}" onChange="{{choisirParPersonne}}" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #2D5BD7">
+<span><span style="font-weight: 500">Saisies pour chaque collaborateur</span> <span style="font-size: 14px; color: #5C6268">· ex. Reda 2 h, Tom G. 1 h, Erwen 0,5 h</span></span>
+</label>
+<label style="display: flex; align-items: flex-start; gap: 10px; min-height: 32px; cursor: pointer">
+<input type="radio" name="heures" checked="{{heuresPartagees}}" onChange="{{choisirPartagees}}" style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #2D5BD7">
+<span><span style="font-weight: 500">Un total réparti à parts égales</span> <span style="font-size: 14px; color: #5C6268">· ex. 3,5 h pour 3 personnes = 1,2 h chacune</span></span>
+</label>
+</fieldset>
+</sc-if>
+</section>
+
+<section aria-label="Effet des réglages" style="background: #202326; color: #F4F5F7; border-radius: 12px; padding: 18px 24px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 17px">Avec ces réglages</span>
+<span style="font-size: 14px; color: #D7DBDF">{{resume}}</span>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<button type="button" onClick="{{enregistrer}}" style="height: 48px; padding: 0 24px; border: 0; border-radius: 8px; background: #2D5BD7; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Enregistrer les réglages</button>
+<span role="status" style="font-size: 14px; color: #5C6268">{{statut}}</span>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+var self = this;
+var st = this.state || {};
+var v = function (k, def) { return st[k] === undefined ? def : st[k]; };
+var validation = v('validation', true);
+var revalider = v('revalider', true);
+var multi = v('multi', true);
+var pilote = v('pilote', true);
+var proposeur = v('proposeur', 'tous');
+var heures = v('heures', 'personne');
+var inter = function (on) {
+return { piste: on ? 'background: #2D5BD7; justify-content: flex-end' : 'background: #9AA0A6; justify-content: flex-start', bouton: '' };
+};
+var basculer = function (k, cur) { return function () { var o = { sauve: false }; o[k] = !cur; self.setState(o); }; };
+var phrases = [];
+if (validation) {
+phrases.push(proposeur === 'tous' ? 'Les membres proposent des tâches, Tom A. les valide avant qu’elles apparaissent chez les collaborateurs.' : 'Seul Tom A. crée les tâches, qui sont publiées dès leur création.');
+if (revalider) phrases.push('Toute modification de dates, d’heures ou de collaborateurs repasse par la validation.');
+} else {
+phrases.push(proposeur === 'tous' ? 'Les tâches créées par n’importe quel membre sont visibles immédiatement.' : 'Seul Tom A. crée les tâches, visibles immédiatement.');
+}
+phrases.push(multi ? (pilote ? 'Une tâche peut avoir plusieurs collaborateurs, dont un seul pilote.' : 'Une tâche peut avoir plusieurs collaborateurs, sans rôle imposé.') : 'Une tâche n’a qu’un seul collaborateur.');
+return {
+validation: validation, revalider: revalider, multi: multi, pilote: pilote,
+interValidation: inter(validation), interRevalider: inter(revalider), interMulti: inter(multi), interPilote: inter(pilote),
+basculerValidation: basculer('validation', validation),
+basculerRevalider: basculer('revalider', revalider),
+basculerMulti: basculer('multi', multi),
+basculerPilote: basculer('pilote', pilote),
+tousProposent: proposeur === 'tous',
+piloteSeul: proposeur === 'pilote',
+choisirTous: function () { self.setState({ proposeur: 'tous', sauve: false }); },
+choisirPilote: function () { self.setState({ proposeur: 'pilote', sauve: false }); },
+heuresParPersonne: heures === 'personne',
+heuresPartagees: heures === 'partage',
+choisirParPersonne: function () { self.setState({ heures: 'personne', sauve: false }); },
+choisirPartagees: function () { self.setState({ heures: 'partage', sauve: false }); },
+resume: phrases.join(' '),
+statut: st.sauve === true ? 'Réglages enregistrés.' : (st.sauve === false ? 'Modifications non enregistrées.' : ''),
+enregistrer: function () { self.setState({ sauve: true }); }
+};
+}
+}
+</script>
+</body>
+</html>

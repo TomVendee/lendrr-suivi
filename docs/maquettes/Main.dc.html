@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Météo du projet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F7}
+a{color:#202326}a:hover{color:#1E40AF}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #F4F5F7; color: #202326; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<nav aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 100%; background: #202326; color: #F4F5F7; padding: 28px 16px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.01em">Suivi projet</div>
+<div style="font-size: 13px; color: #B9BEC4">Projet : LENDRR</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="MaSemaine.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Ma semaine</a>
+<a href="Taches.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg>Tâches</a>
+<a href="Main.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #33383D; color: #FFFFFF; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8FB0FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"></circle><path d="M8 2v1.5M2 9h1.5M3.8 4.8l1 1M12.2 4.8l-1 1M9 19h9a4 4 0 0 0 0-8 5 5 0 0 0-9.5 1.5A3.3 3.3 0 0 0 9 19z"></path></svg>Météo</a>
+<a href="PlanDeCharge.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Plan de charge</a>
+<a href="Graphes.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-5 3 3 6-7"></path></svg>Graphes</a>
+<a href="Gantt.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M7 12h10M12 19h9"></path></svg>Gantt</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9zM10 20.5a2 2 0 0 0 4 0"></path></svg><span style="flex: 1">Alertes</span><span style="min-width: 24px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #2D5BD7; color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">4</span></a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>Synthèse et export</a>
+<a href="Reglages.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>Réglages</a>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: #2B2F33">
+<div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 50%; background: #2D5BD7; color: #FFFFFF; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center">TA</div>
+<div style="display: flex; flex-direction: column">
+<span style="font-weight: 600; font-size: 14px">Tom A.</span>
+<span style="font-size: 12px; color: #B9BEC4">Pilote</span>
+</div>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px; letter-spacing: -0.01em">Météo du projet</h1>
+<p style="margin: 0; color: #5C6268">Semaine S08 · 12 → 16 octobre 2026</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+<span style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border-radius: 18px; background: #FFFFFF; border: 1px solid #D0D5DA; font-size: 14px"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 50%; background: #2D5BD7"></span>Soutenance « objet » dans <strong style="font-family: 'IBM Plex Mono', monospace">44 jours</strong></span>
+<a href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 18px; border-radius: 8px; background: #2D5BD7; color: #FFFFFF; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>Synthèse S08</a>
+</div>
+</header>
+
+<section aria-label="Indicateurs de la semaine" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+<div style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #5C6268">Prochain jalon</span>
+<span style="font-weight: 600; font-size: 16px">Assistant IA utilisable dans l'app</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #5C6268">30/10 · dans 17 jours</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; color: #5C6268">Alertes ouvertes</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 30px; line-height: 1.1">4</span>
+<span style="font-size: 14px; color: #B42318; font-weight: 500">dont 1 critique</span>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #5C6268">Charge S08</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 30px; line-height: 1.1">24 h <span style="font-size: 15px; font-weight: 400; color: #5C6268">/ 24 h de capacité</span></span>
+<div aria-hidden="true" style="height: 8px; border-radius: 4px; background: #E3E6EA; overflow: hidden"><div style="width: 100%; height: 100%; background: #2E7D4F"></div></div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; color: #5C6268">Heures déclarées S08</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 30px; line-height: 1.1">8 h <span style="font-size: 15px; font-weight: 400; color: #5C6268">/ 24 h prévues</span></span>
+<div aria-hidden="true" style="height: 8px; border-radius: 4px; background: #E3E6EA; overflow: hidden"><div style="width: 33%; height: 100%; background: #202326"></div></div>
+</div>
+</section>
+
+<section aria-labelledby="axes-titre" style="display: flex; flex-direction: column; gap: 14px">
+<h2 id="axes-titre" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Par axe</h2>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px">
+
+<article style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.04em">HARD</h3>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: #FBF1DE; color: #8A5A12; font-size: 13px; font-weight: 600"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>À surveiller</span>
+</div>
+<span style="font-size: 13px; color: #5C6268">Erwen · Tom A.</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #E3E6EA; overflow: hidden"><div style="width: 22%; height: 100%; background: #B7791F"></div></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5C6268">3 / 13 tâches · 1 jalon en attente</span>
+<div style="border-top: 1px solid #E3E6EA; padding-top: 10px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C6268; text-transform: uppercase; letter-spacing: 0.06em">Ensuite</span>
+<span style="font-size: 14px; font-weight: 500">Fabrication du caisson et pose de la serrure · 16/10</span>
+</div>
+</article>
+
+<article style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.04em">SOFT</h3>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: #E3F1E8; color: #23603C; font-size: 13px; font-weight: 600"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Au vert</span>
+</div>
+<span style="font-size: 13px; color: #5C6268">Djessen · Sophie</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #E3E6EA; overflow: hidden"><div style="width: 30%; height: 100%; background: #2E7D4F"></div></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5C6268">5 / 16 tâches · dans les temps</span>
+<div style="border-top: 1px solid #E3E6EA; padding-top: 10px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C6268; text-transform: uppercase; letter-spacing: 0.06em">Ensuite</span>
+<span style="font-size: 14px; font-weight: 500">API emprunts, retours et état des cases</span>
+</div>
+</article>
+
+<article style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.04em">IA</h3>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: #FBF1DE; color: #8A5A12; font-size: 13px; font-weight: 600"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>À surveiller</span>
+</div>
+<span style="font-size: 13px; color: #5C6268">Tom G. · Reda</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #E3E6EA; overflow: hidden"><div style="width: 25%; height: 100%; background: #B7791F"></div></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5C6268">3 / 14 tâches · 1 en retard</span>
+<div style="border-top: 1px solid #E3E6EA; padding-top: 10px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C6268; text-transform: uppercase; letter-spacing: 0.06em">Ensuite</span>
+<span style="font-size: 14px; font-weight: 500">Assistant : premier prototype conversationnel</span>
+</div>
+</article>
+
+<article style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.04em">PILOTAGE</h3>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: #E3F1E8; color: #23603C; font-size: 13px; font-weight: 600"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Au vert</span>
+</div>
+<span style="font-size: 13px; color: #5C6268">Tom A.</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #E3E6EA; overflow: hidden"><div style="width: 35%; height: 100%; background: #2E7D4F"></div></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5C6268">Planning tenu chaque lundi</span>
+<div style="border-top: 1px solid #E3E6EA; padding-top: 10px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C6268; text-transform: uppercase; letter-spacing: 0.06em">Ensuite</span>
+<span style="font-size: 14px; font-weight: 500">Préparer la soutenance « objet »</span>
+</div>
+</article>
+
+<article style="background: #E9EBEE; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<h3 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 0.04em">VIDÉO</h3>
+<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: #202326; color: #F4F5F7; font-size: 13px; font-weight: 600">Livrée</span>
+</div>
+<span style="font-size: 13px; color: #5C6268">Sophie · équipe</span>
+<div aria-hidden="true" style="height: 6px; border-radius: 3px; background: #D5D9DE; overflow: hidden"><div style="width: 100%; height: 100%; background: #202326"></div></div>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #5C6268">5 / 5 tâches · diffusée le 25/09</span>
+</article>
+
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<section aria-labelledby="alertes-titre" style="flex: 3 1 480px; min-width: 0; background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 4px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 8px">
+<h2 id="alertes-titre" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Alertes</h2>
+<a href="#" style="font-size: 14px; font-weight: 500">Tout voir</a>
+</div>
+<sc-for list="{{alertes}}" as="al" hint-placeholder-count="4">
+<div style="display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-top: 1px solid #E3E6EA">
+<span style="flex: 0 0 auto; min-width: 128px; height: 26px; padding: 0 10px; box-sizing: border-box; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; display: inline-flex; align-items: center; {{al.tagStyle}}">{{al.type}}</span>
+<div style="flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-weight: 600">{{al.titre}}</span>
+<span style="font-size: 14px; color: #5C6268">{{al.detail}}</span>
+</div>
+<button type="button" style="flex: 0 0 auto; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #D0D5DA; background: #FFFFFF; color: #202326; font: inherit; font-size: 14px; cursor: pointer">{{al.action}}</button>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="jalons-titre" style="flex: 2 1 320px; min-width: 0; background: #202326; color: #F4F5F7; border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 4px">
+<h2 id="jalons-titre" style="margin: 0 0 8px; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Prochains jalons</h2>
+<sc-for list="{{jalons}}" as="j" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid #3A3F44">
+<span aria-hidden="true" style="flex: 0 0 auto; width: 12px; height: 12px; transform: rotate(45deg); {{j.losange}}"></span>
+<span style="flex: 1 1 auto; min-width: 0">{{j.nom}}</span>
+<span style="flex: 0 0 auto; font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #F4F5F7">{{j.date}}</span>
+<span style="flex: 0 0 auto; width: 64px; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #B9BEC4">{{j.dans}}</span>
+</div>
+</sc-for>
+</section>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() {
+var tags = {
+critique: 'background: #B42318; color: #FFFFFF',
+bloquant: 'background: #FDE7E4; color: #8F1C13',
+saisie: 'background: #FBF1DE; color: #7A4F10',
+depassement: 'background: #E9EBEE; color: #202326'
+};
+var alertes = [
+{ niveau: 'critique', type: 'Jalon menacé', titre: '« Composants reçus » dépassé depuis 15 jours', detail: 'Prévu le 28/09, date de livraison toujours inconnue. Bloque toute la chaîne HARD.', action: 'Fixer une date' },
+{ niveau: 'bloquant', type: 'Retard bloquant', titre: 'Présence : photos de référence', detail: 'Reda · échéance 09/10 · bloque « Prototype de détection » qui démarre cette semaine.', action: 'Ouvrir' },
+{ niveau: 'saisie', type: 'Heures non déclarées', titre: 'Tom G. et Djessen n’ont rien saisi pour S07', detail: 'Rappel automatique envoyé lundi à 12 h.', action: 'Relancer' },
+{ niveau: 'depassement', type: 'Dépassement réel', titre: 'Socle serveur : 5,5 h déclarées pour 4 h prévues', detail: 'Djessen · +38 % · à replanifier si la tâche n’est pas terminée.', action: 'Replanifier' }
+];
+var jalons = [
+{ nom: 'Assistant IA utilisable dans l’app', date: '30/10', dans: 'J-17', proche: true },
+{ nom: 'Première ouverture de la case depuis l’app', date: '06/11', dans: 'J-24', proche: false },
+{ nom: 'Prototype fonctionnel', date: '20/11', dans: 'J-38', proche: false },
+{ nom: 'Soutenance « objet »', date: '26/11', dans: 'J-44', proche: false },
+{ nom: 'Soutenance « organisation »', date: '03/12', dans: 'J-51', proche: false }
+];
+return {
+alertes: alertes.map(function (a) { return Object.assign({}, a, { tagStyle: tags[a.niveau] }); }),
+jalons: jalons.map(function (j) { return Object.assign({}, j, { losange: j.proche ? 'background: #2D5BD7' : 'border: 2px solid #B9BEC4; box-sizing: border-box' }); })
+};
+}
+}
+</script>
+</body>
+</html>

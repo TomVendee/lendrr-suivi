@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# Secrets : ne jamais commiter
+.env
+.env.*
+!.env.example
+*.token
+cassiopee-token*
+curl-config*
+*.pem

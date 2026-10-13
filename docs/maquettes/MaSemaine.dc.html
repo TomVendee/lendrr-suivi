@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Ma semaine</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#F4F5F7}
+a{color:#202326}a:hover{color:#1E40AF}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #F4F5F7; color: #202326; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.45">
+
+<nav aria-label="Navigation principale" style="flex: 1 1 220px; max-width: 100%; background: #202326; color: #F4F5F7; padding: 28px 16px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 28px">
+<div style="display: flex; flex-direction: column; gap: 2px; padding: 0 12px">
+<div style="font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.01em">Suivi projet</div>
+<div style="font-size: 13px; color: #B9BEC4">Projet : LENDRR</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="MaSemaine.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #33383D; color: #FFFFFF; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8FB0FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Ma semaine</a>
+<a href="Taches.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"></path></svg>Tâches</a>
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"></circle><path d="M8 2v1.5M2 9h1.5M3.8 4.8l1 1M12.2 4.8l-1 1M9 19h9a4 4 0 0 0 0-8 5 5 0 0 0-9.5 1.5A3.3 3.3 0 0 0 9 19z"></path></svg>Météo</a>
+<a href="PlanDeCharge.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Plan de charge</a>
+<a href="Graphes.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-5 3 3 6-7"></path></svg>Graphes</a>
+<a href="Gantt.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h8M7 12h10M12 19h9"></path></svg>Gantt</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9zM10 20.5a2 2 0 0 0 4 0"></path></svg><span style="flex: 1">Alertes</span><span style="min-width: 24px; height: 22px; padding: 0 6px; box-sizing: border-box; border-radius: 11px; background: #2D5BD7; color: #FFFFFF; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">1</span></a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"></path></svg>Synthèse et export</a>
+<a href="Reglages.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #D7DBDF; text-decoration: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>Réglages</a>
+</div>
+<div style="margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: #2B2F33">
+<div aria-hidden="true" style="width: 36px; height: 36px; border-radius: 50%; background: #D0D5DA; color: #202326; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center">ER</div>
+<div style="display: flex; flex-direction: column">
+<span style="font-weight: 600; font-size: 14px">Erwen</span>
+<span style="font-size: 12px; color: #B9BEC4">Membre · HARD</span>
+</div>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px 40px 48px; box-sizing: border-box; display: flex; flex-direction: column; gap: 24px">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 34px; letter-spacing: -0.01em">Ma semaine</h1>
+<p style="margin: 0; color: #5C6268">S08 · 12 → 16 octobre 2026 · à saisir avant lundi 19/10, 12 h</p>
+</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<button type="button" aria-label="Semaine précédente" style="width: 44px; height: 44px; border-radius: 8px; border: 1px solid #D0D5DA; background: #FFFFFF; color: #202326; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></button>
+<span style="min-width: 64px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 600">S08</span>
+<button type="button" aria-label="Semaine suivante" style="width: 44px; height: 44px; border-radius: 8px; border: 1px solid #D0D5DA; background: #FFFFFF; color: #202326; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+</div>
+</header>
+
+<section aria-label="Mes heures de la semaine" style="background: #202326; color: #F4F5F7; border-radius: 12px; padding: 20px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 24px 40px">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; color: #B9BEC4">Prévu pour moi</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600">4,0 h</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; color: #B9BEC4">Déclaré</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: #8FB0FF">{{totalTxt}} h</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 13px; color: #B9BEC4">Capacité</span>
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600">4,0 h</span>
+</div>
+<div style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px">
+<div aria-hidden="true" style="position: relative; height: 12px; border-radius: 6px; background: #3A3F44; overflow: hidden"><div style="height: 100%; border-radius: 6px; background: #2D5BD7; {{barStyle}}"></div></div>
+<span style="font-size: 13px; color: #B9BEC4">{{resteTxt}}</span>
+</div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+<section aria-labelledby="taches-titre" style="flex: 3 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<h2 id="taches-titre" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600">Mes tâches cette semaine</h2>
+
+<sc-for list="{{taches}}" as="t" hint-placeholder-count="2">
+<article style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px">
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+<span style="align-self: flex-start; height: 22px; padding: 0 8px; border-radius: 4px; background: #202326; color: #F4F5F7; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; display: inline-flex; align-items: center">HARD</span>
+<h3 style="margin: 0; font-size: 18px; font-weight: 600">{{t.titre}}</h3>
+<span style="font-size: 14px; color: #5C6268">{{t.dates}} · {{t.roles}}</span>
+</div>
+<span style="flex: 0 0 auto; height: 28px; padding: 0 12px; border-radius: 14px; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; {{t.statutStyle}}">{{t.statut}}</span>
+</div>
+<div style="background: #F4F5F7; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C6268; text-transform: uppercase; letter-spacing: 0.06em">Terminé quand</span>
+<span style="font-size: 14px">{{t.critere}}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="{{t.idHeures}}" style="font-size: 13px; font-weight: 500">Mes heures cette semaine</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<input id="{{t.idHeures}}" type="number" min="0" max="10" step="0.5" value="{{t.heures}}" onChange="{{t.setHeures}}" style="width: 96px; height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #A9AFB5; border-radius: 8px; background: #FFFFFF; color: #202326; font-family: 'IBM Plex Mono', monospace; font-size: 16px">
+<span style="font-family: 'IBM Plex Mono', monospace; font-size: 14px; color: #5C6268">/ {{t.prevu}} h prévues</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="{{t.idStatut}}" style="font-size: 13px; font-weight: 500">Statut</label>
+<select id="{{t.idStatut}}" value="{{t.statut}}" onChange="{{t.setStatut}}" style="height: 44px; min-width: 160px; padding: 0 12px; border: 1px solid #A9AFB5; border-radius: 8px; background: #FFFFFF; color: #202326; font: inherit">
+<option value="À faire">À faire</option>
+<option value="En cours">En cours</option>
+<option value="Bloquée">Bloquée</option>
+<option value="Terminée">Terminée</option>
+</select>
+</div>
+</div>
+</article>
+</sc-for>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<button type="button" onClick="{{enregistrer}}" style="height: 48px; padding: 0 24px; border: 0; border-radius: 8px; background: #2D5BD7; color: #FFFFFF; font: inherit; font-weight: 600; cursor: pointer">Enregistrer mes heures</button>
+<span role="status" style="font-size: 14px; color: #5C6268">{{messageSauvegarde}}</span>
+</div>
+</section>
+
+<aside style="flex: 2 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<section aria-labelledby="alerte-moi" style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px">
+<h2 id="alerte-moi" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600">Ce qui me concerne</h2>
+<div style="display: flex; gap: 10px; align-items: flex-start">
+<span aria-hidden="true" style="flex: 0 0 auto; margin-top: 6px; width: 10px; height: 10px; border-radius: 50%; background: #B42318"></span>
+<span style="font-size: 14px">Jalon <strong>« Composants reçus »</strong> non confirmé depuis le 28/09. Si un composant manque, signale-le en passant la tâche en « Bloquée ».</span>
+</div>
+</section>
+
+<section aria-labelledby="suivante" style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 id="suivante" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600">Semaine prochaine · S09</h2>
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid #E3E6EA">
+<span style="font-size: 14px; font-weight: 500">Capteurs de porte et de présence, câblage interne</span>
+<span style="font-size: 13px; color: #5C6268">19/10 → 23/10 · pilote · attend le caisson</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid #E3E6EA">
+<span style="font-size: 14px; font-weight: 500">Installation de la caméra et de l'éclairage dans la case</span>
+<span style="font-size: 13px; color: #5C6268">19/10 → 23/10 · pilote · attend le caisson</span>
+</div>
+</section>
+
+<section aria-labelledby="historique" style="background: #FFFFFF; border: 1px solid #D0D5DA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<h2 id="historique" style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600">Mes dernières semaines</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 14px">
+<div style="background: #F4F5F7; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #5C6268">S06</span><span>4,0 / 4,0</span></div>
+<div style="background: #F4F5F7; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #5C6268">S07</span><span>3,5 / 4,0</span></div>
+<div style="background: #F4F5F7; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #5C6268">S08</span><span>{{totalTxt}} / 4,0</span></div>
+</div>
+</section>
+</aside>
+
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { heures: [1.5, 0], statuts: ['En cours', 'À faire'], sauve: false };
+}
+renderVals() {
+var self = this;
+var fmt = function (n) { return n.toFixed(1).replace('.', ','); };
+var styles = {
+'À faire': 'background: #E9EBEE; color: #202326',
+'En cours': 'background: #E3EBFD; color: #1E40AF',
+'Bloquée': 'background: #B42318; color: #FFFFFF',
+'Terminée': 'background: #E3F1E8; color: #23603C'
+};
+var base = [
+{ titre: 'Fabrication du caisson et pose de la serrure', dates: '12/10 → 16/10', roles: 'pilote : moi 2 h · appui : Tom A. 1,5 h', prevu: '2,0', critere: 'Caisson assemblé, porte montée, serrure fixée et fonctionnelle mécaniquement.' },
+{ titre: 'Commande de la serrure par le Raspberry Pi (GPIO)', dates: '12/10 → 16/10', roles: 'pilote : moi 2 h · appui : Tom A. 1,5 h', prevu: '2,0', critere: 'Un script sur le Raspberry Pi ouvre la serrure sur commande, dix fois de suite sans échec.' }
+];
+var taches = base.map(function (t, i) {
+var statut = self.state.statuts[i];
+return Object.assign({}, t, {
+idHeures: 'heures-' + i,
+idStatut: 'statut-' + i,
+heures: self.state.heures[i],
+statut: statut,
+statutStyle: styles[statut],
+setHeures: function (e) {
+var v = parseFloat(e.target.value);
+var h = self.state.heures.slice();
+h[i] = isNaN(v) ? 0 : v;
+self.setState({ heures: h, sauve: false });
+},
+setStatut: function (e) {
+var s = self.state.statuts.slice();
+s[i] = e.target.value;
+self.setState({ statuts: s, sauve: false });
+}
+});
+});
+var total = this.state.heures.reduce(function (a, b) { return a + b; }, 0);
+var reste = 4 - total;
+return {
+taches: taches,
+totalTxt: fmt(total),
+barStyle: 'width: ' + Math.min(100, Math.round(total / 4 * 100)) + '%',
+resteTxt: reste > 0 ? 'Encore ' + fmt(reste) + ' h prévues cette semaine' : (reste === 0 ? 'Semaine complète' : 'Dépassement de ' + fmt(-reste) + ' h : le pilote sera prévenu'),
+messageSauvegarde: this.state.sauve ? 'Enregistré · ' + fmt(total) + ' h pour S08' : 'Dernier enregistrement : mardi 13/10, 18 h 40',
+enregistrer: function () { self.setState({ sauve: true }); }
+};
+}
+}
+</script>
+</body>
+</html>
