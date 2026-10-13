@@ -1,5 +1,5 @@
 {
-  "name": "lendrr-suivi",
+  "name": "iplanner",
   "image": { "repository": "ghcr.io/tomvendee/lendrr-suivi", "tag": "REMPLACER" },
   "replicas": 1,
   "resources": { "limits": { "cpu": "200m", "memory": "256Mi" } },
@@ -7,7 +7,7 @@
   "env": {
     "DATABASE_URL": "REMPLACER",
     "PORT": "8080",
-    "APP_URL": "https://lendrr-suivi.cassiopee.siops.sigl.epita.fr"
+    "APP_URL": "https://iplanner.cassiopee.siops.sigl.epita.fr"
   },
   "probes": { "readiness": { "enabled": true, "path": "/ready", "port": 8080 } }
 }

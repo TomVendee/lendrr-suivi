@@ -98,8 +98,8 @@ Lire `docs/cassiopee-guide-ia.md` en entier d'abord. Points non négociables :
   ou modifié, **attendre l'accord explicite** de Tom A. Ne jamais supprimer la base.
 - Après chaque écriture : sonder `/status` jusqu'à `deployed`, puis `curl -I` sur l'URL. Un `202` n'est pas un
   déploiement réussi.
-- Noms (décision D12) : base `lendrr-suivi-db` (PostgreSQL 16, `db_name` `app`), application `lendrr-suivi`,
-  endpoint `lendrr-suivi`. Tout en minuscules.
+- Noms (décision D12) : base `iplanner-db` (PostgreSQL 16, `db_name` `app`), application `iplanner`,
+  endpoint `iplanner`. Tout en minuscules.
 - Application : image publique `ghcr.io/<compte>/lendrr-suivi:<version>` (jamais `latest`), `service`
   `{"port": 80, "target_port": 8080}`, sonde readiness `/ready` sur 8080, limites à valider avec `/quota`.
   Après le `POST`, relire avec `GET` : si `service` est `null`, le renvoyer en `PUT` (écart connu).

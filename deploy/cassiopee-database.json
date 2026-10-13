@@ -1,5 +1,5 @@
 {
-  "name": "lendrr-suivi-db",
+  "name": "iplanner-db",
   "engine": "postgresql",
   "version": "16",
   "storage_size": "1Gi",

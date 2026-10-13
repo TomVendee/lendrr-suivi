@@ -1,6 +1,6 @@
 {
-  "name": "lendrr-suivi",
-  "applicationName": "lendrr-suivi",
+  "name": "iplanner",
+  "applicationName": "iplanner",
   "path": "/",
   "pathType": "Prefix"
 }
