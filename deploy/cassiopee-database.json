@@ -1,0 +1,7 @@
+{
+  "name": "lendrr-suivi-db",
+  "engine": "postgresql",
+  "version": "16",
+  "storage_size": "1Gi",
+  "db_name": "app"
+}

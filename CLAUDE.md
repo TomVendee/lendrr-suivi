@@ -16,20 +16,25 @@ Le développeur est Tom A. (chef de projet de l'équipe). Il écrit en français
 
 ## Stack (voir `docs/decisions.md`)
 
-TypeScript partout. Node 22 + Hono + Zod côté serveur, React + Vite + TanStack Query côté front, PostgreSQL 16
-via Drizzle (migrations versionnées appliquées au démarrage), Vitest pour les tests, Playwright pour quelques
-parcours de bout en bout. Une seule image Docker (`node:22-alpine`, utilisateur `node`, port 8080) qui sert
-l'API sous `/api` et le front buildé. Postgres local via `docker compose` pour le développement.
+Rust côté serveur (Axum + tokio + sqlx, validation serde + validator), React + Vite +
+TanStack Query côté front, PostgreSQL 16 via sqlx (migrations versionnées appliquées au
+démarrage), `cargo test` pour les tests, Playwright pour quelques parcours de bout en bout.
+Une seule image Docker (build `rust:1.90-slim`, run `debian:12-slim`, utilisateur `appuser`
+UID 1000, port 8080) qui sert l'API sous `/api`, le MCP sous `/mcp` et le front. Postgres
+local via `docker compose` pour le développement.
 
 Arborescence visée (à créer, ajustable si tu justifies) :
 
 ```
 src/domain/     logique métier pure, sans I/O : jours ouvrés, charge, décalage, chemin critique, alertes, validation
-src/server/     Hono : routes /api, auth, accès base (Drizzle), migrations, /health, /ready
-src/web/        React : écrans, composants, jetons de design
-db/migrations/  migrations Drizzle
+src/routes/     Axum : routes /api, /mcp, auth, accès base (sqlx), migrations, /health, /ready
+src/auth.rs     argon2id, sessions, tokens API
+src/config.rs   env (DATABASE_URL, PORT, APP_URL, SETUP_CODE temporaire)
+src/web.rs      sert web/dist (build Vite) sinon page hello du socle
+web/            React : écrans, composants, jetons de design (Vite, outDir dist)
+db/migrations/  migrations sqlx
 deploy/         Dockerfile, corps JSON Cassiopée SANS secret, script de déploiement
-docs/           cahier, décisions, maquettes, guide Cassiopée (ne pas modifier sans accord, sauf decisions.md)
+docs/           cahier, décisions, maquettes, guide Cassiopée, contrat MCP (ne pas modifier sans accord, sauf decisions.md)
 ```
 
 Nommage : code et identifiants en anglais, interface en français, dates affichées `jj/mm`, heures `1,5 h`.
@@ -54,7 +59,7 @@ Nommage : code et identifiants en anglais, interface en français, dates affich�
 - **Settings** : validation active, revalidation après modification, qui peut proposer, validateur et
   suppléant, délai de rappel, seuils d'alerte, date de début du projet (S01 = lundi 24/08/2026).
 
-## Règles métier à tester en priorité (`src/domain/`, Vitest)
+## Règles métier à tester en priorité (`src/domain/`, `cargo test`)
 
 Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limites :
 
@@ -75,7 +80,7 @@ Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limi
   `/setup`, déploiement « hello » sur Cassiopée) avant la fonction 1, pour que chaque fonction soit livrable.
 - Pour chaque fonction : propose d'abord un plan court (données, routes, écrans, tests) et **attends l'accord
   de Tom A.** ; puis tests du domaine, puis API, puis écran d'après la maquette.
-- **Terminé** = tests verts (`npm test`), lint et types sans erreur, l'écran correspond à la maquette sur
+- **Terminé** = tests verts (`cargo test`), clippy et types sans erreur, l'écran correspond à la maquette sur
   ordinateur et à 390 px de large, et la fonction a été essayée en local avec des données réalistes.
 - Petits commits clairs. N'ajoute rien du « Hors V1 » sans qu'on le demande.
 - Si une règle du cahier est ambiguë, pose la question au lieu d'inventer ; note la réponse dans
@@ -117,5 +122,5 @@ L'import doit être rejouable sans créer de doublons et produire un rapport (cr
 
 - Jamais de secret dans le dépôt, les commits, les journaux ou les URL (`.gitignore` fourni).
 - Mots de passe en argon2id, cookies de session `HttpOnly; Secure; SameSite=Lax`, contrôle du rôle côté
-  serveur sur chaque route d'écriture, entrées validées par Zod.
+  serveur sur chaque route d'écriture, entrées validées par serde + validator.
 - `/setup` ne fonctionne que tant qu'aucun utilisateur n'existe, et exige `SETUP_CODE`.

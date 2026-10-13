@@ -1,0 +1,6 @@
+{
+  "name": "lendrr-suivi",
+  "applicationName": "lendrr-suivi",
+  "path": "/",
+  "pathType": "Prefix"
+}
