@@ -44,3 +44,4 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | Limites CPU/mémoire | `200m` / `256Mi` pour l'application. | Lire `GET /quota` avant le premier déploiement. |
 | Notifications | Aucune en V1 (hors périmètre). | Après la bascule, si les rappels dans l'app ne suffisent pas. |
 | Connexion via Keycloak EPITA | Non en V1. | Si un client OIDC peut être obtenu pour l'app. |
+| Incident Cinder 13/10 | Tout ce qui monte un volume (bases managées, apps avec `/ready` sur DB) reste à `0/1` sur prod comme staging ; Endpoint/CronJob/apps sans DB passent. Ressources `iplanner*` supprimées des deux envs pour libérer les quotas, à recréer après réparation. | Retour SiOps (piste : OpenStack/Cinder HS, même famille que S3 503 du 09/10). |
