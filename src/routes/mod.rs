@@ -8,6 +8,7 @@ use serde_json::json;
 use sqlx::PgPool;
 
 mod deps;
+mod import;
 mod me;
 mod mcp;
 mod setup;
@@ -41,6 +42,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/dependencies", post(deps::create).delete(deps::delete))
         .route("/api/my-week", get(week::my_week))
         .route("/api/time-entries", post(week::log_hours))
+        .route("/api/import", post(import::import_asana))
         .route("/mcp", post(mcp::not_ready_yet))
         .fallback(crate::web::fallback)
         .with_state(state)
