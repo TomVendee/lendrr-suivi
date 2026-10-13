@@ -12,6 +12,7 @@ mod me;
 mod mcp;
 mod setup;
 mod tasks;
+mod week;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -38,6 +39,8 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/tasks/{id}/status", post(tasks::set_status))
         .route("/api/axes", get(tasks::axes))
         .route("/api/dependencies", post(deps::create).delete(deps::delete))
+        .route("/api/my-week", get(week::my_week))
+        .route("/api/time-entries", post(week::log_hours))
         .route("/mcp", post(mcp::not_ready_yet))
         .fallback(crate::web::fallback)
         .with_state(state)
