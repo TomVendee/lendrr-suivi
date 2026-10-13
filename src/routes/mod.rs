@@ -13,6 +13,7 @@ mod me;
 mod setup;
 mod stats;
 mod tasks;
+mod views;
 mod week;
 
 #[derive(Clone)]
@@ -47,6 +48,8 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/import", post(import::import_asana))
         .route("/api/load", get(stats::load))
         .route("/api/alerts", get(stats::alerts))
+        .route("/api/gantt", get(views::gantt))
+        .route("/api/meteo", get(views::meteo))
         .nest_service("/mcp", mcp_service)
         .fallback(crate::web::fallback)
         .with_state(state)
