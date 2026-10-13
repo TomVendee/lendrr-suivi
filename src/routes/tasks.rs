@@ -261,6 +261,15 @@ pub async fn update(
     if let Err(e) = check_assignments(&input.assignments) {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response();
     }
+    let old: Option<(NaiveDate, NaiveDate)> =
+        sqlx::query_as("SELECT start_date, end_date FROM tasks WHERE id=$1")
+            .bind(id)
+            .fetch_optional(&s.pool)
+            .await
+            .unwrap_or(None);
+    let Some((_, old_end)) = old else {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
+    };
     let n = sqlx::query(
         "UPDATE tasks SET title=$1, axis_code=$2, start_date=$3, end_date=$4,
          done_criteria=$5, milestone=$6 WHERE id=$7",
@@ -291,7 +300,14 @@ pub async fn update(
         .execute(&s.pool)
         .await;
     }
-    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+    // F2 : la fin recule → décalage en cascade (D13 : seulement si chevauchement,
+    // jalons jamais bougés, sans repasser par la validation).
+    let (shifted, threatened) = if input.end_date > old_end {
+        super::deps::cascade_after_move(&s.pool, id, input.end_date).await
+    } else {
+        (vec![], vec![])
+    };
+    (StatusCode::OK, Json(json!({"ok": true, "shifted": shifted, "milestones_threatened": threatened}))).into_response()
 }
 
 pub async fn set_status(
