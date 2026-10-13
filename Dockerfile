@@ -9,6 +9,14 @@ COPY db ./db
 ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
+# ---- front ----
+FROM node:22-alpine AS webbuilder
+WORKDIR /web
+COPY web/package.json web/package-lock.json* web/npm-shrinkwrap.json* ./
+RUN npm install --no-audit --no-fund
+COPY web ./
+RUN npm run build
+
 # ---- run (non-root, port > 1024) ----
 FROM debian:12-slim
 RUN useradd -u 1000 -m appuser && apt-get update \
@@ -18,7 +26,7 @@ USER 1000
 WORKDIR /app
 COPY --from=builder /build/target/release/lendrr-suivi /app/lendrr-suivi
 COPY --from=builder /build/db /app/db
-COPY web /app/web
+COPY --from=webbuilder /web/dist /app/web/dist
 ENV PORT=8080
 EXPOSE 8080
 CMD ["/app/lendrr-suivi"]
