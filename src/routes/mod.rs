@@ -7,14 +7,16 @@ use axum::{
 use serde_json::json;
 use sqlx::PgPool;
 
-mod deps;
-mod import;
-mod me;
-mod setup;
-mod stats;
-mod tasks;
-mod views;
-mod week;
+pub(crate) mod deps;
+pub(crate) mod import;
+pub(crate) mod me;
+pub(crate) mod report;
+pub(crate) mod revisions;
+pub(crate) mod setup;
+pub(crate) mod stats;
+pub(crate) mod tasks;
+pub(crate) mod views;
+pub(crate) mod week;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -37,6 +39,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/login", post(me::login))
         .route("/api/logout", post(me::logout))
         .route("/api/tokens", post(me::create_token))
+        .route("/api/users", post(me::create_user))
         .route("/setup", post(setup::setup))
         .route("/api/tasks", get(tasks::list).post(tasks::create))
         .route("/api/tasks/{id}", get(tasks::get).put(tasks::update))
@@ -50,6 +53,11 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/alerts", get(stats::alerts))
         .route("/api/gantt", get(views::gantt))
         .route("/api/meteo", get(views::meteo))
+        .route("/api/revisions", get(revisions::list))
+        .route("/api/revisions/{id}/validate", post(revisions::decide))
+        .route("/api/baselines", post(report::take_baseline))
+        .route("/api/synthesis", get(report::synthesis))
+        .route("/api/export", get(report::export))
         .nest_service("/mcp", mcp_service)
         .fallback(crate::web::fallback)
         .with_state(state)

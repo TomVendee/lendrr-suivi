@@ -45,6 +45,15 @@ pub struct LogHoursArgs {
     pub hours: f64,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ValidateTaskArgs {
+    pub revision_id: String,
+    pub approve: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct NoArgs {}
+
 fn today_paris() -> chrono::NaiveDate {
     chrono::Utc::now()
         .with_timezone(&chrono_tz::Europe::Paris)
@@ -211,6 +220,62 @@ impl SuiviMcp {
         .await
         .map_err(|_| ErrorData::invalid_params("bad-task", None))?;
         Ok(text(serde_json::json!({"ok": true})))
+    }
+
+    /// Lister les alertes (les siennes pour un membre, toutes pour le pilote).
+    #[tool(description = "Lister les alertes : surcharges, retards, heures manquantes, jalons menaces")]
+    async fn list_alerts(
+        &self,
+        Parameters(_): Parameters<NoArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
+        let alerts = crate::routes::stats::compute_alerts(&self.pool, uid, &role).await;
+        Ok(text(serde_json::json!({"alerts": alerts})))
+    }
+
+    /// Valider ou rejeter une tâche en attente (pilote uniquement).
+    #[tool(description = "Valider ou rejeter une tache en attente de validation (pilote)")]
+    async fn validate_task(
+        &self,
+        Parameters(args): Parameters<ValidateTaskArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let (_, role) = user_from_parts(&self.pool, &parts).await?;
+        if role != "pilot" {
+            return Err(ErrorData::invalid_params("pilot-only", None));
+        }
+        let rev: uuid::Uuid = args
+            .revision_id
+            .parse()
+            .map_err(|_| ErrorData::invalid_params("bad-revision-id", None))?;
+        let row: Option<(Option<uuid::Uuid>, serde_json::Value)> = sqlx::query_as(
+            "SELECT task_id, payload FROM task_revisions WHERE id=$1 AND status='pending'",
+        )
+        .bind(rev)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+        let Some((task_id, payload)) = row else {
+            return Err(ErrorData::invalid_params("not-found", None));
+        };
+        if !args.approve {
+            let _ = sqlx::query("UPDATE task_revisions SET status='rejected' WHERE id=$1")
+                .bind(rev)
+                .execute(&self.pool)
+                .await;
+            return Ok(text(serde_json::json!({"decision": "rejected"})));
+        }
+        match crate::routes::revisions::apply_payload(&self.pool, task_id, &payload).await {
+            Ok(new_id) => {
+                let _ = sqlx::query("UPDATE task_revisions SET status='validated' WHERE id=$1")
+                    .bind(rev)
+                    .execute(&self.pool)
+                    .await;
+                Ok(text(serde_json::json!({"decision": "validated", "task_id": new_id})))
+            }
+            Err(reason) => Err(ErrorData::invalid_params(reason, None)),
+        }
     }
 }
 

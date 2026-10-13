@@ -98,6 +98,12 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
     let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
+    let out = compute_alerts(&s.pool, uid, &role).await;
+    (StatusCode::OK, Json(json!({"alerts": out}))).into_response()
+}
+
+/// Cœur pur-I/O du moteur d'alertes, réutilisé par la REST et le MCP.
+pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) -> Vec<Value> {
     let today = today_paris();
     let cur = project_week(today);
     let t = Thresholds::default();
@@ -105,7 +111,7 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
 
     let users: Vec<(uuid::Uuid, String, f64)> =
         sqlx::query_as("SELECT id, name, default_capacity_hours FROM users")
-            .fetch_all(&s.pool)
+            .fetch_all(pool)
             .await
             .unwrap_or_default();
     let name_of = |id: &uuid::Uuid| {
@@ -115,17 +121,17 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
     // Données tâches + assignations.
     let tasks: Vec<(uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool)> =
         sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, milestone FROM tasks")
-            .fetch_all(&s.pool)
+            .fetch_all(pool)
             .await
             .unwrap_or_default();
     let assigns: Vec<(uuid::Uuid, uuid::Uuid, String, f64)> =
         sqlx::query_as("SELECT task_id, user_id, role, planned_hours FROM assignments")
-            .fetch_all(&s.pool)
+            .fetch_all(pool)
             .await
             .unwrap_or_default();
     let dep_rows: Vec<(uuid::Uuid, uuid::Uuid)> =
         sqlx::query_as("SELECT pred_id, succ_id FROM dependencies")
-            .fetch_all(&s.pool)
+            .fetch_all(pool)
             .await
             .unwrap_or_default();
 
@@ -149,7 +155,7 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
             .bind(id)
             .bind(w)
             .bind(*defcap)
-            .fetch_one(&s.pool)
+            .fetch_one(pool)
             .await
             .unwrap_or(*defcap);
             if planned_load(&my, w) > cap {
@@ -163,7 +169,7 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
         )
         .bind(id)
         .bind(cur - 1)
-        .fetch_one(&s.pool)
+        .fetch_one(pool)
         .await
         .unwrap_or(0.0);
         // Lundi 12h Paris, semaine écoulée sans saisie (V1 : évalué à la lecture).
@@ -181,7 +187,7 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
     let totals: Vec<(uuid::Uuid, uuid::Uuid, f64)> = sqlx::query_as(
         "SELECT task_id, user_id, COALESCE(SUM(hours),0) FROM time_entries GROUP BY task_id, user_id",
     )
-    .fetch_all(&s.pool)
+    .fetch_all(pool)
     .await
     .unwrap_or_default();
     for (tid, who, real) in totals {
@@ -271,5 +277,5 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
     }
 
     out.sort_by_key(|a| std::cmp::Reverse(a.get("severity").and_then(|v| v.as_u64()).unwrap_or(0)));
-    (StatusCode::OK, Json(json!({"alerts": out}))).into_response()
+    out
 }

@@ -249,17 +249,33 @@ pub async fn update(
     Path(id): Path<uuid::Uuid>,
     Json(input): Json<TaskIn>,
 ) -> impl IntoResponse {
-    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    if role != "pilot" {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
-    }
     if input.validate().is_err() || !valid_axis(&input.axis_code) || input.end_date < input.start_date {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-input"}))).into_response();
     }
     if let Err(e) = check_assignments(&input.assignments) {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response();
+    }
+    // F11 : un membre ne modifie pas le publié — sa proposition attend la validation.
+    if role != "pilot" {
+        let _ = sqlx::query(
+            "INSERT INTO task_revisions (task_id, payload, created_by) VALUES ($1, $2, $3)",
+        )
+        .bind(id)
+        .bind(serde_json::json!({
+            "title": input.title, "axis_code": input.axis_code,
+            "start_date": input.start_date, "end_date": input.end_date,
+            "done_criteria": input.done_criteria, "milestone": input.milestone,
+            "assignments": input.assignments.iter().map(|a| serde_json::json!({
+                "user_id": a.user_id, "role": a.role, "planned_hours": a.planned_hours
+            })).collect::<Vec<_>>(),
+        }))
+        .bind(uid)
+        .execute(&s.pool)
+        .await;
+        return (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation"}))).into_response();
     }
     let old: Option<(NaiveDate, NaiveDate)> =
         sqlx::query_as("SELECT start_date, end_date FROM tasks WHERE id=$1")

@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use validator::Validate;
 
 use super::{AppState, current_user};
 
@@ -106,4 +107,49 @@ pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl
         .execute(&s.pool)
         .await;
     (StatusCode::CREATED, Json(json!({"token": token}))).into_response()
+}
+
+#[derive(Deserialize, Validate)]
+pub struct CreateUserIn {
+    #[validate(length(min = 1, max = 120))]
+    pub name: String,
+    #[validate(email)]
+    pub email: String,
+    #[validate(length(min = 10))]
+    pub password: String,
+    pub role: Option<String>,
+    pub default_capacity_hours: Option<f64>,
+}
+
+/// Comptes créés par le chef de projet (D8). Pilote uniquement.
+pub async fn create_user(State(s): State<AppState>, headers: HeaderMap, Json(input): Json<CreateUserIn>) -> impl IntoResponse {
+    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    if role != "pilot" {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    }
+    if input.validate().is_err() {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-input"}))).into_response();
+    }
+    let r = input.role.unwrap_or_else(|| "member".into());
+    if r != "member" && r != "pilot" {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-role"}))).into_response();
+    }
+    let id: Option<uuid::Uuid> = sqlx::query_scalar(
+        "INSERT INTO users (name, email, password_hash, role, default_capacity_hours)
+         VALUES ($1,$2,$3,$4,$5) RETURNING id",
+    )
+    .bind(input.name.trim())
+    .bind(input.email.trim())
+    .bind(crate::auth::hash_password(&input.password))
+    .bind(r)
+    .bind(input.default_capacity_hours.unwrap_or(4.0))
+    .fetch_optional(&s.pool)
+    .await
+    .unwrap_or(None);
+    match id {
+        Some(id) => (StatusCode::CREATED, Json(json!({"id": id}))).into_response(),
+        None => (StatusCode::CONFLICT, Json(json!({"error": "email-taken"}))).into_response(),
+    }
 }
