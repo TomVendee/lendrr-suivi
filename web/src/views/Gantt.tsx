@@ -1,8 +1,9 @@
 /** Écran Gantt : reprend la maquette docs/maquettes (structure + jetons), données live. */
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Checkbox, SegmentedControl } from "@mantine/core";import { notifications } from "@mantine/notifications";
 import { api, fmtDate } from "../api";
-import { C, F_MONO, F_TITRE, PageHead, card } from "../theme";
+import { C, F_MONO, F_TITRE, PageHead, card, box, ink, line, muted, surf, track } from "../theme";
 
 interface GTask {
   id: string; title: string; axis: string; start: string; end: string;
@@ -13,11 +14,15 @@ interface GanttData { today: string; tasks: GTask[]; deps: { from: string; to: s
 const AXES = ["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"] as const;
 const dayN = (iso: string) => new Date(iso + "T00:00:00").getTime() / 86400000;
 
-export function Gantt() {
+export function Gantt({ role }: { role: string }) {
+  const qc = useQueryClient();
   const [vue, setVue] = useState<"pole" | "global">("pole");
   const [liens, setLiens] = useState(true);
   const [critSeul, setCritSeul] = useState(false);
   const [ouverts, setOuverts] = useState<Record<string, boolean>>({ HARD: true, IA: true, JALONS: true });
+  const [drag, setDrag] = useState<{ id: string; start: string; end: string; dx: number } | null>(null);
+  const [moved, setMoved] = useState<string[]>([]);
+  const plotRef = useRef<HTMLDivElement>(null);
   const q = useQuery({ queryKey: ["gantt"], queryFn: () => api<GanttData>("/api/gantt") });
   if (!q.data) return <p>Chargement…</p>;
   const { today, tasks, deps } = q.data;
@@ -47,16 +52,76 @@ export function Gantt() {
     }
   }
 
+  /** Décale une date ISO de n jours calendaires (conserve la durée). */
+  const addDays = (iso: string, n: number) => {
+    const d = new Date(iso + "T00:00:00");
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
   const bar = (t: GTask): React.CSSProperties => {
+    // Aperçu pendant le drag : la barre suit la souris, publication au relâcher.
+    const off = drag?.id === t.id ? (drag.dx / span) * 100 : 0;
     const late = !t.milestone && t.status !== "done" && t.end < today;
     const base: React.CSSProperties = {
       position: "absolute", top: 8, height: 14, borderRadius: 3, boxSizing: "border-box",
-      left: `${pct(t.start)}%`, width: `${Math.max(0.8, pctEnd(t.end) - pct(t.start))}%`,
+      left: `${pct(t.start) + off}%`, width: `${Math.max(0.8, pctEnd(t.end) - pct(t.start))}%`,
+      cursor: role === "pilot" && !t.milestone ? "grab" : undefined,
+      touchAction: "none",
+      outline: moved.includes(t.id) ? `2px solid ${C.accent}` : undefined,
+      outlineOffset: 1,
     };
     if (late) return { ...base, background: "#FFFFFF", border: "2px solid #B42318" };
     if (t.critical) return { ...base, background: C.accent };
     return { ...base, background: "#9AA0A6", opacity: critSeul ? 0.18 : 1 };
   };
+  const onBarDown = (t: GTask) => (e: React.PointerEvent) => {
+    if (role !== "pilot" || t.milestone) return;
+    e.preventDefault();
+    const plot = plotRef.current;
+    if (!plot) return;
+    const plotW = plot.getBoundingClientRect().width;
+    const pxPerDay = plotW / span;
+    const x0 = e.clientX;
+    const move = (ev: PointerEvent) => {
+      const dx = Math.round((ev.clientX - x0) / pxPerDay);
+      setDrag({ id: t.id, start: t.start, end: t.end, dx });
+    };
+    const up = async (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      const dx = Math.round((ev.clientX - x0) / pxPerDay);
+      setDrag(null);
+      if (dx === 0) return;
+      try {
+        // PUT exige la fiche complète : on la recharge puis on repose les dates.
+        const full = await api<{ id: string; title: string; axis_code: string; done_criteria: string; milestone: boolean; assignments: { user_id: string; role: string; planned_hours: number }[] }>(`/api/tasks/${t.id}`);
+        const r = await api<{ shifted: string[]; milestones_threatened: string[] }>(`/api/tasks/${t.id}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            title: full.title, axis_code: full.axis_code,
+            start_date: addDays(t.start, dx), end_date: addDays(t.end, dx),
+            done_criteria: full.done_criteria, milestone: full.milestone,
+            assignments: full.assignments,
+          }),
+        });
+        setMoved(r.shifted ?? []);
+        setTimeout(() => setMoved([]), 6000);
+        notifications.show({
+          message: r.shifted?.length
+            ? `Décalée + cascade : ${r.shifted.length} tâche(s) suivent${r.milestones_threatened?.length ? ", jalon menacé" : ""}.`
+            : r.milestones_threatened?.length ? "Jalon menacé." : "Dates mises à jour.",
+          color: r.milestones_threatened?.length ? "crit" : "brand",
+        });
+        qc.invalidateQueries({ queryKey: ["gantt"] });
+      } catch {
+        notifications.show({ message: "Déplacement refusé.", color: "crit" });
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   const rows: React.ReactNode[] = [];
   const places: Record<string, { x0: number; x1: number; y: number; crit: boolean; title: string }> = {};
   // L'overlay des liens couvre aussi l'en-tête (52 px) : on part de 52.
@@ -68,12 +133,12 @@ export function Gantt() {
     y += ROW_T;
     places[t.id] = { x0: pct(t.start), x1: pctEnd(t.end), y: yy + 16, crit: t.critical, title: t.title };
     return (
-      <div key={t.id} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_T, boxSizing: "border-box", borderTop: "1px solid #EFF1F4" }}>
+      <div key={t.id} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_T, boxSizing: "border-box", borderTop: `1px solid ${track}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 8px 0 30px", minWidth: 0 }}>
           <span style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: t.critical ? 600 : 400, color: critSeul && !t.critical ? "#9AA0A6" : undefined }}>{t.title}</span>
         </div>
-        <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, #EFF1F4 0, #EFF1F4 1px, transparent 1px, transparent 10%)" }}>
-          <div style={bar(t)} />
+        <div style={{ position: "relative", backgroundImage: `repeating-linear-gradient(to right, ${track} 0, ${track} 1px, transparent 1px, transparent 10%)` }}>
+          <div onPointerDown={onBarDown(t)} title={role === "pilot" && !t.milestone ? "Glisser pour déplacer" : undefined} style={bar(t)} />
         </div>
       </div>
     );
@@ -81,12 +146,12 @@ export function Gantt() {
   const jalonRow = (t: GTask) => {
     y += ROW_T;
     return (
-      <div key={t.id} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_T, boxSizing: "border-box", borderTop: "1px solid #EFF1F4" }}>
+      <div key={t.id} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_T, boxSizing: "border-box", borderTop: `1px solid ${track}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 8px 0 30px", minWidth: 0 }}>
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600 }}>{t.title}</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 12, color: C.discret }}>{fmtDate(t.start)}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 12, color: muted }}>{fmtDate(t.start)}</span>
         </div>
-        <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, #EFF1F4 0, #EFF1F4 1px, transparent 1px, transparent 10%)" }}>
+        <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, ${track} 0, ${track} 1px, transparent 1px, transparent 10%)" }}>
           <div style={{ position: "absolute", top: 9, width: 12, height: 12, marginLeft: -6, transform: "rotate(45deg)", boxSizing: "border-box", left: `${pct(t.start)}%`, background: t.end < today && t.status !== "done" ? "#B42318" : C.encre }} />
         </div>
       </div>
@@ -102,13 +167,13 @@ export function Gantt() {
       const yy = y;
       y += ROW_AXE;
       rows.push(
-        <div key={`ax-${ax}`} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_AXE, boxSizing: "border-box", background: "#F7F8FA", borderTop: "1px solid #E3E6EA" }}>
+        <div key={`ax-${ax}`} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_AXE, boxSizing: "border-box", background: `${box}`, borderTop: `1px solid ${track}` }}>
           <button type="button" aria-expanded={ouvert} onClick={() => setOuverts({ ...ouverts, [ax]: !ouvert })}
-            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 8px", border: 0, background: "transparent", color: C.encre, font: "inherit", textAlign: "left", cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 8px", border: 0, background: "transparent", color: ink, font: "inherit", textAlign: "left", cursor: "pointer" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={ouvert ? { transform: "rotate(90deg)" } : undefined}><path d="M9 6l6 6-6 6" /></svg>
             <span style={{ fontFamily: F_TITRE, fontWeight: 700, letterSpacing: "0.05em", fontSize: 14 }}>{ax}</span>
           </button>
-          <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, #ECEEF1 0, #ECEEF1 1px, transparent 1px, transparent 10%)" }} />
+          <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, ${line} 0, ${line} 1px, transparent 1px, transparent 10%)" }} />
         </div>
       );
       void yy;
@@ -122,14 +187,14 @@ export function Gantt() {
       const ouvert = !!ouverts.JALONS;
       y += ROW_AXE;
       rows.push(
-        <div key="ax-JALONS" style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_AXE, boxSizing: "border-box", background: "#F7F8FA", borderTop: "1px solid #E3E6EA" }}>
+        <div key="ax-JALONS" style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_AXE, boxSizing: "border-box", background: `${box}`, borderTop: `1px solid ${track}` }}>
           <button type="button" aria-expanded={ouvert} onClick={() => setOuverts({ ...ouverts, JALONS: !ouvert })}
-            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 8px", border: 0, background: "transparent", color: C.encre, font: "inherit", textAlign: "left", cursor: "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: 8, height: 40, padding: "0 8px", border: 0, background: "transparent", color: ink, font: "inherit", textAlign: "left", cursor: "pointer" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={ouvert ? { transform: "rotate(90deg)" } : undefined}><path d="M9 6l6 6-6 6" /></svg>
             <span style={{ fontFamily: F_TITRE, fontWeight: 700, letterSpacing: "0.05em", fontSize: 14 }}>JALONS</span>
-            <span style={{ fontSize: 12, color: C.discret }}>{allJ.length} à venir</span>
+            <span style={{ fontSize: 12, color: muted }}>{allJ.length} à venir</span>
           </button>
-          <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, #ECEEF1 0, #ECEEF1 1px, transparent 1px, transparent 10%)" }} />
+          <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, ${line} 0, ${line} 1px, transparent 1px, transparent 10%)" }} />
         </div>
       );
       if (ouvert) allJ.forEach((t) => rows.push(jalonRow(t)));
@@ -159,7 +224,7 @@ export function Gantt() {
   }
 
   const actif = { background: C.encre, color: C.fond };
-  const inactif = { background: "transparent", color: C.encre };
+  const inactif = { background: "transparent", color: ink };
 
   return (
     <>
@@ -168,39 +233,35 @@ export function Gantt() {
         sub={`${fmtDate(min)} → ${fmtDate(max)} · ${tasks.filter((t) => !t.milestone).length} tâches`}
         right={
           <>
-            <div role="group" aria-label="Regroupement" style={{ display: "inline-flex", padding: 4, borderRadius: 10, background: "#E3E6EA", gap: 4 }}>
-              <button type="button" aria-pressed={vue === "pole"} onClick={() => setVue("pole")}
-                style={{ height: 40, padding: "0 16px", border: 0, borderRadius: 8, font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", ...(vue === "pole" ? actif : inactif) }}>Par pôle</button>
-              <button type="button" aria-pressed={vue === "global"} onClick={() => setVue("global")}
-                style={{ height: 40, padding: "0 16px", border: 0, borderRadius: 8, font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", ...(vue === "global" ? actif : inactif) }}>Vue globale</button>
-            </div>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 44, padding: "0 14px", borderRadius: 8, background: C.surface, border: `1px solid ${C.bordure}`, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-              <input type="checkbox" checked={liens} onChange={() => setLiens(!liens)} style={{ width: 18, height: 18, accentColor: C.accent, margin: 0 }} />
-              Afficher les liens
-            </label>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 10, minHeight: 44, padding: "0 14px", borderRadius: 8, background: C.surface, border: `1px solid ${C.bordure}`, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-              <input type="checkbox" checked={critSeul} onChange={() => setCritSeul(!critSeul)} style={{ width: 18, height: 18, accentColor: C.accent, margin: 0 }} />
-              Chemin critique seulement
-            </label>
+            <SegmentedControl
+              value={vue}
+              onChange={(v) => setVue(v as "pole" | "global")}
+              data={[
+                { value: "pole", label: "Par pôle" },
+                { value: "global", label: "Vue globale" },
+              ]}
+            />
+            <Checkbox label="Afficher les liens" checked={liens} onChange={() => setLiens(!liens)} />
+            <Checkbox label="Chemin critique seulement" checked={critSeul} onChange={() => setCritSeul(!critSeul)} />
           </>
         }
       />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 13, color: "#4A5056" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: C.accent }} />Chemin critique</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "#9AA0A6" }} />Tâche avec marge</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: C.surface, border: "2px solid #B42318", boxSizing: "border-box" }} />En retard</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: surf, border: "2px solid #B42318", boxSizing: "border-box" }} />En retard</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 10, height: 10, transform: "rotate(45deg)", background: C.encre }} />Jalon</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 2, height: 14, background: "#B42318" }} />Aujourd'hui, {fmtDate(today)}</span>
       </div>
       <section aria-label="Diagramme de Gantt" style={{ ...card, padding: "16px 18px 20px", overflowX: "auto" }}>
-        <div style={{ position: "relative", minWidth: 980 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: 52, boxSizing: "border-box", borderBottom: `1px solid ${C.bordure}` }}>
-            <span style={{ fontSize: 13, color: C.discret, alignSelf: "end", paddingBottom: 8 }}>Tâche</span>
+        <div ref={plotRef} style={{ position: "relative", minWidth: 980 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: 52, boxSizing: "border-box", borderBottom: `1px solid ${line}` }}>
+            <span style={{ fontSize: 13, color: muted, alignSelf: "end", paddingBottom: 8 }}>Tâche</span>
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${weekCols.length}, minmax(0, 1fr))` }}>
               {weekCols.map((s) => (
-                <div key={s.code} style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", paddingBottom: 8, borderLeft: "1px solid #ECEEF1", fontSize: 12 }}>
+                <div key={s.code} style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", paddingBottom: 8, borderLeft: `1px solid ${line}`, fontSize: 12 }}>
                   <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 13 }}>{s.code}</span>
-                  <span style={{ color: C.discret }}>{s.date}</span>
+                  <span style={{ color: muted }}>{s.date}</span>
                 </div>
               ))}
             </div>

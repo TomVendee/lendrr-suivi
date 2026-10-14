@@ -1,10 +1,12 @@
 /** Écran Semaine : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button, NumberInput, Select } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { api, fmtDate, fmtH, fmtN, type Me } from "../api";
 import { TAG, alertDetail, type Alert } from "./Alertes";
 import { useIsMobile } from "../Shell";
-import { AxisChip, C, F_MONO, F_TITRE, StatusPill, btnPrimary, card, field, labelSm, legend } from "../theme";
+import { AxisChip, C, F_MONO, F_TITRE, StatusPill, box, card, legend, line, muted, surf, track } from "../theme";
 
 interface WeekTask {
   id: string; title: string; axis_code: string; start_date: string; end_date: string;
@@ -57,17 +59,22 @@ export function Semaine({ me }: { me: Me }) {
 
   const saveAll = async () => {
     const entries = Object.entries(hours).filter(([, v]) => v.trim() !== "");
-    for (const [taskId, v] of entries) {
-      const h = parseFloat(v.replace(",", "."));
-      if (Number.isNaN(h)) continue;
-      await api("/api/time-entries", {
-        method: "POST",
-        body: JSON.stringify({ task_id: taskId, week: d.week, hours: h }),
-      });
+    try {
+      for (const [taskId, v] of entries) {
+        const h = parseFloat(v.replace(",", "."));
+        if (Number.isNaN(h)) continue;
+        await api("/api/time-entries", {
+          method: "POST",
+          body: JSON.stringify({ task_id: taskId, week: d.week, hours: h }),
+        });
+      }
+      setHours({});
+      setMsg(`Enregistré · ${fmtN(d.real)} h pour S${String(d.week).padStart(2, "0")}`);
+      notifications.show({ message: "Heures enregistrées", color: "ok" });
+      qc.invalidateQueries({ queryKey: ["my-week"] });
+    } catch {
+      notifications.show({ message: "Échec d'enregistrement", color: "crit" });
     }
-    setHours({});
-    setMsg(`Enregistré · ${fmtN(d.real)} h pour S${String(d.week).padStart(2, "0")}`);
-    qc.invalidateQueries({ queryKey: ["my-week"] });
   };
   const setStatus = async (taskId: string, status: string) => {
     await api(`/api/tasks/${taskId}/status`, { method: "POST", body: JSON.stringify({ status }) });
@@ -84,12 +91,12 @@ export function Semaine({ me }: { me: Me }) {
   const weekNav = (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
       <button type="button" aria-label="Semaine précédente" onClick={() => setWeek(d.week - 1)}
-        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${C.bordure}`, background: mobile ? "transparent" : C.surface, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         {chevL}
       </button>
       <span style={{ minWidth: 56, textAlign: "center", fontFamily: F_MONO, fontWeight: 600 }}>S{String(d.week).padStart(2, "0")}</span>
       <button type="button" aria-label="Semaine suivante" onClick={() => setWeek(d.week + 1)}
-        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${C.bordure}`, background: mobile ? "transparent" : C.surface, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         {chevR}
       </button>
     </div>
@@ -142,7 +149,7 @@ export function Semaine({ me }: { me: Me }) {
         <div style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           <AxisChip code={t.axis_code} />
           <h3 style={{ margin: 0, fontSize: mobile ? 17 : 18, fontWeight: 600, lineHeight: 1.3 }}>{t.title}</h3>
-          <span style={{ fontSize: mobile ? 13 : 14, color: C.discret }}>
+          <span style={{ fontSize: mobile ? 13 : 14, color: muted }}>
             {fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.my_role === "lead" ? "pilote" : "appui"}{t.my_role === "lead" ? (mobile ? ` ${fmtH(t.my_planned_hours)}` : ` : moi ${fmtH(t.my_planned_hours)}`) : ` ${me.name}`}
           </span>
         </div>
@@ -154,31 +161,33 @@ export function Semaine({ me }: { me: Me }) {
           <p style={{ margin: "6px 0 0" }}>{t.done_criteria || "—"}</p>
         </details>
       ) : (
-        <div style={{ background: C.fond, borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ background: box, borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={legend}>Terminé quand</span>
           <span style={{ fontSize: 14 }}>{t.done_criteria || "—"}</span>
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: mobile ? 10 : 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 4 : 6, flex: mobile ? "1 1 auto" : undefined }}>
-          <label htmlFor={`h-${t.id}`} style={labelSm}>{mobile ? "Mes heures" : "Mes heures cette semaine"}</label>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input id={`h-${t.id}`} type="number" min={0} max={10} step={0.5} inputMode="decimal"
-              value={hours[t.id] ?? t.my_real_hours}
-              onChange={(e) => setHours({ ...hours, [t.id]: e.target.value })}
-              style={{ ...field, width: mobile ? "100%" : 96, height: mobile ? 48 : 44, fontFamily: F_MONO, fontSize: mobile ? 18 : 16 }} />
-            {!mobile && <span style={{ fontFamily: F_MONO, fontSize: 14, color: C.discret }}>/ {fmtN(t.my_planned_hours)} h prévues</span>}
-          </div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flex: mobile ? "1 1 auto" : undefined }}>
+          <NumberInput
+            id={`h-${t.id}`}
+            label={mobile ? "Mes heures" : "Mes heures cette semaine"}
+            min={0} max={80} step={0.5} decimalSeparator=","
+            value={hours[t.id] ?? t.my_real_hours}
+            onChange={(v) => setHours({ ...hours, [t.id]: String(v ?? "") })}
+            styles={{ input: { fontFamily: F_MONO, fontSize: mobile ? 18 : 16 }, root: { width: mobile ? "100%" : 120 } }}
+          />
+          {!mobile && <span style={{ fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h prévues</span>}
         </div>
-        {mobile && <span style={{ paddingBottom: 12, fontFamily: F_MONO, fontSize: 14, color: C.discret }}>/ {fmtN(t.my_planned_hours)} h</span>}
+        {mobile && <span style={{ paddingBottom: 12, fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h</span>}
         {!mobile && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <label htmlFor={`s-${t.id}`} style={labelSm}>Statut</label>
-            <select id={`s-${t.id}`} value={t.status} onChange={(e) => setStatus(t.id, e.target.value)}
-              style={{ ...field, minWidth: 160 }}>
-              {STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          </div>
+          <Select
+            id={`s-${t.id}`}
+            label="Statut"
+            value={t.status}
+            onChange={(v) => v && setStatus(t.id, v)}
+            data={STATUS_OPTIONS.map(([value, label]) => ({ value, label }))}
+            w={160}
+          />
         )}
       </div>
     </article>
@@ -215,8 +224,8 @@ export function Semaine({ me }: { me: Me }) {
           </div>
         </div>
         {taskCards}
-        <button type="button" onClick={saveAll} style={{ ...btnPrimary, height: 52, borderRadius: 10, fontSize: 16 }}>Enregistrer mes heures</button>
-        <p role="status" style={{ fontSize: 13, color: C.discret, textAlign: "center" }}>{msg}</p>
+        <Button onClick={saveAll} size="lg" radius="md">Enregistrer mes heures</Button>
+        <p role="status" style={{ fontSize: 13, color: muted, textAlign: "center" }}>{msg}</p>
       </>
     );
   }
@@ -226,7 +235,7 @@ export function Semaine({ me }: { me: Me }) {
       <header style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <h1 style={{ margin: 0, fontFamily: F_TITRE, fontWeight: 700, fontSize: 34, letterSpacing: "-0.01em" }}>Ma semaine</h1>
-          <p style={{ margin: 0, color: C.discret }}>S{String(d.week).padStart(2, "0")} · {fmtDate(d.monday)} → {fmtDate(d.sunday)} · à saisir avant lundi, 12 h</p>
+          <p style={{ margin: 0, color: muted }}>S{String(d.week).padStart(2, "0")} · {fmtDate(d.monday)} → {fmtDate(d.sunday)} · à saisir avant lundi, 12 h</p>
         </div>
         {weekNav}
       </header>
@@ -235,10 +244,10 @@ export function Semaine({ me }: { me: Me }) {
         <section aria-labelledby="taches-titre" style={{ flex: "3 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <h2 id="taches-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Mes tâches cette semaine</h2>
           {taskCards}
-          {d.tasks.length === 0 && <p style={{ color: C.discret }}>Aucune tâche cette semaine.</p>}
+          {d.tasks.length === 0 && <p style={{ color: muted }}>Aucune tâche cette semaine.</p>}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-            <button type="button" onClick={saveAll} style={btnPrimary}>Enregistrer mes heures</button>
-            <span role="status" style={{ fontSize: 14, color: C.discret }}>{msg}</span>
+            <Button onClick={saveAll} size="md">Enregistrer mes heures</Button>
+            <span role="status" style={{ fontSize: 14, color: muted }}>{msg}</span>
           </div>
         </section>
         <aside style={{ flex: "2 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -255,19 +264,19 @@ export function Semaine({ me }: { me: Me }) {
           <section aria-labelledby="suivante" style={card}>
             <h2 id="suivante" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 17, fontWeight: 600 }}>Semaine prochaine · S{String(d.week + 1).padStart(2, "0")}</h2>
             {(next.data?.tasks ?? []).map((t) => (
-              <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 10, borderTop: "1px solid #E3E6EA" }}>
+              <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 10, borderTop: `1px solid ${track}` }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t.title}</span>
-                <span style={{ fontSize: 13, color: C.discret }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.my_role === "lead" ? "pilote" : "appui"}</span>
+                <span style={{ fontSize: 13, color: muted }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.my_role === "lead" ? "pilote" : "appui"}</span>
               </div>
             ))}
-            {(next.data?.tasks.length ?? 0) === 0 && <span style={{ fontSize: 14, color: C.discret }}>Rien de prévu.</span>}
+            {(next.data?.tasks.length ?? 0) === 0 && <span style={{ fontSize: 14, color: muted }}>Rien de prévu.</span>}
           </section>
           <section aria-labelledby="historique" style={card}>
             <h2 id="historique" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 17, fontWeight: 600 }}>Mes dernières semaines</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, fontFamily: F_MONO, fontSize: 14 }}>
               {(history.data ?? []).map((h) => (
                 <div key={h.week} style={{ background: C.fond, borderRadius: 8, padding: 10, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ fontSize: 12, color: C.discret }}>S{String(h.week).padStart(2, "0")}</span>
+                  <span style={{ fontSize: 12, color: muted }}>S{String(h.week).padStart(2, "0")}</span>
                   <span>{fmtN(h.real)} / {fmtN(d.capacity)}</span>
                 </div>
               ))}

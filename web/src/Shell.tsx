@@ -1,8 +1,11 @@
-/** Coquille : sidebar sombre + onglets mobile, badges, carte utilisateur. Copie la structure des .dc.html. */
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ActionIcon, Avatar, Badge, NavLink, useComputedColorScheme, useMantineColorScheme,
+} from "@mantine/core";
+import { IconMoon, IconSun } from "@tabler/icons-react";
 import { api, initials, type Me } from "./api";
-import { C, F_TITRE, ICONS, Icon } from "./theme";
+import { C, F_TITRE, ICONS, Icon, faint, ink, line, muted, surf } from "./theme";
 
 export type View =
   | "semaine" | "taches" | "meteo" | "charge" | "graphes"
@@ -33,15 +36,19 @@ export function useIsMobile() {
   return m;
 }
 
-function Badge({ n, dim }: { n: number; dim?: boolean }) {
-  if (n <= 0) return null;
+/** Bascule clair/sombre, persistée par Mantine (localStorage). */
+export function ThemeToggle() {
+  const { setColorScheme } = useMantineColorScheme();
+  const computed = useComputedColorScheme("light");
   return (
-    <span style={{
-      minWidth: 24, height: 22, padding: "0 6px", boxSizing: "border-box",
-      borderRadius: 11, background: dim ? "#3A3F44" : C.accent, color: "#FFFFFF",
-      fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 600,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>{n}</span>
+    <ActionIcon
+      variant="subtle" size="lg" radius="md" color="gray"
+      aria-label={computed === "light" ? "Passer en sombre" : "Passer en clair"}
+      title={computed === "light" ? "Passer en sombre" : "Passer en clair"}
+      onClick={() => setColorScheme(computed === "light" ? "dark" : "light")}
+    >
+      {computed === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
+    </ActionIcon>
   );
 }
 
@@ -67,14 +74,17 @@ export function Shell({ me, view, setView, children }: {
 
   if (mobile) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: C.fond, color: C.encre, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
         <header style={{ background: C.encre, color: C.fond, padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 18 }}>Suivi projet</span>
-            <button onClick={logout} aria-label={me.name}
-              style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "#D0D5DA", color: C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {initials(me.name)}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <ThemeToggle />
+              <button onClick={logout} aria-label={me.name}
+                style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "#D0D5DA", color: C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {initials(me.name)}
+              </button>
+            </div>
           </div>
           {view === "semaine" ? null : (
             <div style={{ fontFamily: F_TITRE, fontSize: 22, fontWeight: 700 }}>
@@ -85,13 +95,13 @@ export function Shell({ me, view, setView, children }: {
         <main style={{ flex: "1 1 auto", padding: 16, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
           {children}
         </main>
-        <nav aria-label="Navigation" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", background: C.surface, borderTop: `1px solid ${C.bordure}`, padding: "6px 4px 10px" }}>
+        <nav aria-label="Navigation" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", background: surf, borderTop: `1px solid ${line}`, padding: "6px 4px 10px" }}>
           {MOBILE_TABS.map((id) => {
             const item = NAV.find((n) => n.id === id)!;
             const active = view === id;
             return (
               <button key={id} onClick={() => setView(id)}
-                style={{ minHeight: 52, border: 0, background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 12, fontWeight: active ? 600 : 400, color: active ? C.accentFonce : "#4A5056", cursor: "pointer" }}>
+                style={{ minHeight: 52, border: 0, background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 12, fontWeight: active ? 600 : 400, color: active ? C.accentFonce : muted, cursor: "pointer" }}>
                 <Icon d={ICONS[item.icon]} size={22} />
                 {item.label === "Ma semaine" ? "Ma semaine" : item.label === "Plan de charge" ? "Charge" : item.label}
               </button>
@@ -103,37 +113,53 @@ export function Shell({ me, view, setView, children }: {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", alignItems: "stretch", background: C.fond, color: C.encre, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", alignItems: "stretch", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
       <nav aria-label="Navigation principale" style={{ flex: "1 1 220px", maxWidth: 260, background: C.encre, color: C.fond, padding: "28px 16px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 28 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px" }}>
-          <div style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 22, letterSpacing: "0.01em" }}>Suivi projet</div>
-          <div style={{ fontSize: 13, color: C.navMuted }}>Projet : LENDRR</div>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "0 12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 22, letterSpacing: "0.01em" }}>Suivi projet</div>
+            <div style={{ fontSize: 13, color: C.navMuted }}>Projet : LENDRR</div>
+          </div>
+          <ThemeToggle />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {NAV.map((item) => {
             const active = view === item.id;
             return (
-              <button key={item.id} onClick={() => setView(item.id)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 12, minHeight: 44, padding: "0 12px",
-                  borderRadius: 8, border: 0, background: active ? C.nav : "transparent",
-                  color: active ? "#FFFFFF" : C.navTxt, fontWeight: active ? 600 : 400,
-                  font: "inherit", fontSize: 15, cursor: "pointer", textAlign: "left",
-                }}>
-                <span style={{ color: active ? C.bleuClair : "currentColor", display: "flex" }}>
-                  <Icon d={ICONS[item.icon]} />
-                </span>
-                <span style={{ flex: 1 }}>{item.label}</span>
-                {item.id === "taches" && me.role === "pilot" && <Badge n={nRevs} />}
-                {item.id === "alertes" && <Badge n={nAlerts} />}
-              </button>
+              <NavLink
+                key={item.id}
+                label={
+                  <span style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {item.id === "taches" && me.role === "pilot" && nRevs > 0 && (
+                      <Badge size="sm" circle color="brand" variant="filled">{nRevs}</Badge>
+                    )}
+                    {item.id === "alertes" && nAlerts > 0 && (
+                      <Badge size="sm" circle color="brand" variant="filled">{nAlerts}</Badge>
+                    )}
+                  </span>
+                }
+                leftSection={<span style={{ color: active ? C.bleuClair : "currentColor", display: "flex" }}><Icon d={ICONS[item.icon]} /></span>}
+                active={active}
+                onClick={() => setView(item.id)}
+                color="gray"
+                variant={active ? "filled" : "subtle"}
+                styles={{
+                  root: {
+                    minHeight: 44, borderRadius: 8, color: active ? "#FFFFFF" : C.navTxt,
+                    background: active ? C.nav : "transparent",
+                    fontWeight: active ? 600 : 400,
+                    "&:hover": { background: active ? C.nav : "#2B2F33" },
+                  },
+                }}
+              />
             );
           })}
         </div>
         <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 10, background: C.userCard }}>
-          <div aria-hidden="true" style={{ width: 36, height: 36, borderRadius: "50%", background: me.role === "pilot" ? C.accent : "#D0D5DA", color: me.role === "pilot" ? "#FFFFFF" : C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Avatar color={me.role === "pilot" ? "brand" : "gray"} radius="xl">
             {initials(me.name)}
-          </div>
+          </Avatar>
           <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
             <span style={{ fontWeight: 600, fontSize: 14 }}>{me.name}</span>
             <span style={{ fontSize: 12, color: C.navMuted }}>{me.role === "pilot" ? "Pilote" : "Membre"}</span>

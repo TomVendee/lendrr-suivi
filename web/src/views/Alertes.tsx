@@ -1,7 +1,8 @@
 /** Écran Alertes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
+import { Badge, Button } from "@mantine/core";
 import { api } from "../api";
-import { C, F_TITRE, PageHead, card } from "../theme";
+import { C, F_TITRE, PageHead, card, ink, muted, track } from "../theme";
 
 export interface Alert {
   kind: string; severity: number; title?: string; milestone?: string;
@@ -14,8 +15,8 @@ export const TAG: Record<string, { label: string; style: React.CSSProperties }> 
   late: { label: "Tâche en retard", style: { background: C.critFond, color: "#8F1C13" } },
   overload: { label: "Surcharge prévue", style: { background: C.warnFond, color: "#7A4F10" } },
   "missing-hours": { label: "Heures non déclarées", style: { background: C.warnFond, color: "#7A4F10" } },
-  overrun: { label: "Dépassement réel", style: { background: "#E9EBEE", color: C.encre } },
-  incomplete: { label: "Tâche incomplète", style: { background: "#E9EBEE", color: C.encre } },
+  overrun: { label: "Dépassement réel", style: { background: "#E9EBEE", color: ink } },
+  incomplete: { label: "Tâche incomplète", style: { background: "#E9EBEE", color: ink } },
 };
 
 export function alertDetail(a: Alert): string {  switch (a.kind) {
@@ -50,18 +51,17 @@ export function Alertes({ goTaches }: { goTaches: () => void }) {
         {q.data.alerts.map((a, i) => {
           const tag = TAG[a.kind] ?? { label: a.kind, style: {} };
           return (
-            <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderTop: i === 0 ? "none" : "1px solid #E3E6EA" }}>
-              <span style={{ flex: "0 0 auto", minWidth: 128, height: 26, padding: "0 10px", boxSizing: "border-box", borderRadius: 6, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", ...tag.style }}>
+            <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderTop: i === 0 ? "none" : `1px solid ${track}` }}>
+              <Badge color={a.severity >= 3 ? "crit" : a.severity === 2 ? "warn" : "gray"} variant="light" size="lg" radius="sm" style={{ flex: "0 0 auto" }}>
                 {tag.label}
-              </span>
+              </Badge>
               <div style={{ flex: "1 1 auto", minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
                 <span style={{ fontWeight: 600 }}>{a.title ?? a.milestone ?? tag.label}</span>
-                <span style={{ fontSize: 14, color: C.discret }}>{alertDetail(a)}</span>
+                <span style={{ fontSize: 14, color: muted }}>{alertDetail(a)}</span>
               </div>
-              <button type="button" onClick={goTaches}
-                style={{ flex: "0 0 auto", height: 36, padding: "0 14px", borderRadius: 8, border: `1px solid ${C.bordure}`, background: C.surface, font: "inherit", fontSize: 14, cursor: "pointer" }}>
+              <Button variant="default" onClick={goTaches}>
                 Ouvrir
-              </button>
+              </Button>
             </div>
           );
         })}
@@ -81,7 +81,7 @@ export function Synthese({ role }: { role: string }) {
     return (
       <>
         <PageHead title="Synthèse et export" />
-        <div style={card}><p style={{ margin: 0, color: C.discret }}>La synthèse est réservée au pilote.</p></div>
+        <div style={card}><p style={{ margin: 0, color: muted }}>La synthèse est réservée au pilote.</p></div>
       </>
     );
   }
@@ -94,7 +94,7 @@ export function Synthese({ role }: { role: string }) {
       </section>
       <section aria-label="Export" style={card}>
         <h2 style={{ margin: "0 0 8px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Prévu contre réalisé (soutenance)</h2>
-        <p style={{ color: C.discret }}>Le « prévu » est lu dans la baseline du lundi, pas dans le planning courant.</p>
+        <p style={{ color: muted }}>Le « prévu » est lu dans la baseline du lundi, pas dans le planning courant.</p>
         <button
           style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 18px", border: 0, borderRadius: 8, background: C.accent, color: "#FFFFFF", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
           onClick={async () => {

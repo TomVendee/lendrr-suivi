@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, fmtDate, fmtH, useUsers, type Task } from "../api";
 import { TAG as ALERT_TAG } from "./Alertes";
-import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi } from "../theme";
+import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi, box, line, muted, surf, track } from "../theme";
 
 interface MeteoCard {
   axis: string; label: string; total: number; done: number; progress: number;
@@ -96,7 +96,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
         sub={curWeek ? `Semaine S${String(curWeek.week).padStart(2, "0")}` : undefined}
         right={soutenance ? (
           <>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 36, padding: "0 14px", borderRadius: 18, background: C.surface, border: `1px solid ${C.bordure}`, fontSize: 14 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 36, padding: "0 14px", borderRadius: 18, background: surf, border: `1px solid ${line}`, fontSize: 14 }}>
               <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent }} />
               {soutenance.title} dans <strong style={{ fontFamily: F_MONO }}>{daysUntil(soutenance.start)} jours</strong>
             </span>
@@ -108,30 +108,30 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
       />
       <section aria-label="Indicateurs de la semaine" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
         <div style={kpi}>
-          <span style={{ fontSize: 13, color: C.discret }}>Prochain jalon</span>
+          <span style={{ fontSize: 13, color: muted }}>Prochain jalon</span>
           <span style={{ fontWeight: 600, fontSize: 16 }}>{milestones[0]?.title ?? "Aucun"}</span>
-          {milestones[0] && <span style={{ fontFamily: F_MONO, fontSize: 14, color: C.discret }}>{fmtDate(milestones[0].start)} · dans {daysUntil(milestones[0].start)} jours</span>}
+          {milestones[0] && <span style={{ fontFamily: F_MONO, fontSize: 14, color: muted }}>{fmtDate(milestones[0].start)} · dans {daysUntil(milestones[0].start)} jours</span>}
         </div>
         <div style={kpi}>
-          <span style={{ fontSize: 13, color: C.discret }}>Alertes ouvertes</span>
+          <span style={{ fontSize: 13, color: muted }}>Alertes ouvertes</span>
           <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>{allAlerts.length}</span>
           <span style={{ fontSize: 14, color: C.crit, fontWeight: 500 }}>{nCrit > 0 ? `dont ${nCrit} critique${nCrit > 1 ? "s" : ""}` : "aucune critique"}</span>
         </div>
         <div style={kpi}>
-          <span style={{ fontSize: 13, color: C.discret }}>Charge équipe</span>
+          <span style={{ fontSize: 13, color: muted }}>Charge équipe</span>
           <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>
-            {fmtH(teamPlanned)} <span style={{ fontSize: 15, fontWeight: 400, color: C.discret }}>/ {fmtH(teamCapa)} de capacité</span>
+            {fmtH(teamPlanned)} <span style={{ fontSize: 15, fontWeight: 400, color: muted }}>/ {fmtH(teamCapa)} de capacité</span>
           </span>
-          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: "#E3E6EA", overflow: "hidden" }}>
+          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: `${track}`, overflow: "hidden" }}>
             <div style={{ width: `${teamCapa ? Math.min(100, (teamPlanned / teamCapa) * 100) : 0}%`, height: "100%", background: teamPlanned > teamCapa ? C.crit : C.ok }} />
           </div>
         </div>
         <div style={kpi}>
-          <span style={{ fontSize: 13, color: C.discret }}>Heures déclarées</span>
+          <span style={{ fontSize: 13, color: muted }}>Heures déclarées</span>
           <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>
-            {fmtH(teamReal)} <span style={{ fontSize: 15, fontWeight: 400, color: C.discret }}>/ {fmtH(teamPlanned)} prévues</span>
+            {fmtH(teamReal)} <span style={{ fontSize: 15, fontWeight: 400, color: muted }}>/ {fmtH(teamPlanned)} prévues</span>
           </span>
-          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: "#E3E6EA", overflow: "hidden" }}>
+          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: `${track}`, overflow: "hidden" }}>
             <div style={{ width: `${teamPlanned ? Math.min(100, (teamReal / teamPlanned) * 100) : 0}%`, height: "100%", background: C.encre }} />
           </div>
         </div>
@@ -144,7 +144,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
             const delivered = c.total > 0 && c.done === c.total;
             const watch = !delivered && (c.late.length > 0 || c.next_milestone?.risk);
             return (
-              <article key={c.axis} style={{ ...card, background: delivered ? "#E9EBEE" : C.surface, display: "flex", flexDirection: "column", gap: 12 }}>
+              <article key={c.axis} style={{ ...card, background: delivered ? "#E9EBEE" : surf, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <h3 style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 700, letterSpacing: "0.04em" }}>{AXIS_LABEL[c.axis] ?? c.axis}</h3>
                   {delivered ? (
@@ -155,16 +155,16 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
                     <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.okFond, color: "#23603C", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>Au vert</span>
                   )}
                 </div>
-                <span style={{ fontSize: 13, color: C.discret }}>{axisMembers(c.axis)}</span>
-                <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: "#E3E6EA", overflow: "hidden" }}>
+                <span style={{ fontSize: 13, color: muted }}>{axisMembers(c.axis)}</span>
+                <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: `${track}`, overflow: "hidden" }}>
                   <div style={{ width: `${c.progress * 100}%`, height: "100%", background: watch ? C.warn : delivered ? C.encre : C.ok }} />
                 </div>
-                <span style={{ fontFamily: F_MONO, fontSize: 13, color: C.discret }}>
+                <span style={{ fontFamily: F_MONO, fontSize: 13, color: muted }}>
                   {c.done} / {c.total} tâches{c.next_milestone ? ` · ${c.next_milestone.risk ? "1 jalon menacé" : "dans les temps"}` : ""}
                 </span>
                 {(axisNext(c.axis) || c.next_milestone) && (
-                  <div style={{ borderTop: "1px solid #E3E6EA", paddingTop: 10, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 12, color: C.discret, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ensuite</span>
+                  <div style={{ borderTop: `1px solid ${track}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span style={{ fontSize: 12, color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ensuite</span>
                     <span style={{ fontSize: 14, fontWeight: 500 }}>
                       {c.next_milestone ? `◆ ${c.next_milestone.title} · ${fmtDate(c.next_milestone.date)}` : axisNext(c.axis)}
                     </span>
@@ -184,13 +184,13 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
           {allAlerts.slice(0, 4).map((a, i) => {
             const tag = ALERT_TAG[a.kind] ?? { label: a.kind, style: {} };
             return (
-              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderTop: "1px solid #E3E6EA" }}>
+              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderTop: `1px solid ${track}` }}>
                 <span style={{ flex: "0 0 auto", minWidth: 128, height: 26, padding: "0 10px", boxSizing: "border-box", borderRadius: 6, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", ...tag.style }}>
                   {tag.label}
                 </span>
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
                   <span style={{ fontWeight: 600 }}>{a.title ?? a.milestone ?? tag.label}</span>
-                  <span style={{ fontSize: 14, color: C.discret }}>{alertDetail(a)}</span>
+                  <span style={{ fontSize: 14, color: muted }}>{alertDetail(a)}</span>
                 </div>
               </div>
             );

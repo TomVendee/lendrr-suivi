@@ -28,9 +28,20 @@ export const F_SANS = "'IBM Plex Sans', system-ui, sans-serif";
 export const F_TITRE = "'Space Grotesk', sans-serif";
 export const F_MONO = "'IBM Plex Mono', monospace";
 
+/** Couleurs qui suivent le mode clair/sombre (Mantine v8 : light-dark()). */
+export const ink = "light-dark(#202326, #C9CDD1)";
+export const muted = "light-dark(#5C6268, #9EA3AA)";
+export const line = "light-dark(#D0D5DA, #373A40)";
+export const faint = "light-dark(#F4F5F7, #232529)";
+export const inputBorder = "light-dark(#A9AFB5, #42464D)";
+/** Surfaces claires (cartes, champs) et aplats gris qui s'inversent en sombre. */
+export const surf = "light-dark(#FFFFFF, #1E1F22)";
+export const box = "light-dark(#F4F5F7, #26282C)";
+export const track = "light-dark(#EFF1F4, #2A2D31)";
+
 export const card: React.CSSProperties = {
-  background: C.surface,
-  border: `1px solid ${C.bordure}`,
+  background: surf,
+  border: `1px solid ${line}`,
   borderRadius: 12,
   padding: "18px 20px",
 };
@@ -69,10 +80,10 @@ export const btnSecond: React.CSSProperties = {
 export const field: React.CSSProperties = {
   height: 44,
   padding: "0 12px",
-  border: "1px solid #A9AFB5",
+  border: `1px solid ${inputBorder}`,
   borderRadius: 8,
-  background: C.surface,
-  color: C.encre,
+  background: surf,
+  color: ink,
   font: "inherit",
 };
 

@@ -1,9 +1,10 @@
 /** Racine : login/setup puis Shell + vues (Météo par défaut côté pilote, Ma semaine côté membre). */
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button, Card, PasswordInput, TextInput, Title } from "@mantine/core";
 import { api, useMe } from "./api";
 import { Shell, type View } from "./Shell";
-import { C, F_TITRE, btnPrimary, card, field } from "./theme";
+import { C, F_TITRE, muted } from "./theme";
 import { Meteo } from "./views/Meteo";
 import { Semaine } from "./views/Semaine";
 import { Taches } from "./views/Taches";
@@ -29,7 +30,7 @@ export function App() {
       {v === "taches" && <Taches role={me.data.role} />}
       {v === "charge" && <Charge />}
       {v === "graphes" && <Graphes goCharge={() => setView("charge")} />}
-      {v === "gantt" && <Gantt />}
+      {v === "gantt" && <Gantt role={me.data.role} />}
       {v === "alertes" && <Alertes goTaches={() => setView("taches")} />}
       {v === "synthese" && <Synthese role={me.data.role} />}
       {v === "reglages" && (me.data.role === "pilot" ? <Reglages /> : <p>Réservé au pilote.</p>)}
@@ -61,27 +62,27 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.fond, padding: 16 }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "light-dark(#F4F5F7, #101114)", padding: 16 }}>
       <div style={{ width: 420, maxWidth: "100%" }}>
-        <h1 style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 28 }}>Suivi projet</h1>
-        <p style={{ color: C.discret }}>Projet : LENDRR</p>
-        <div style={{ ...card, padding: "22px 24px" }}>
+        <Title order={1} style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 28 }}>Suivi projet</Title>
+        <p style={{ color: muted }}>Projet : LENDRR</p>
+        <Card withBorder radius="lg" p="lg">
           <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
             {mode === "setup" && (
               <>
-                <input style={field} placeholder="Code setup (SETUP_CODE)" value={f.code} onChange={set("code")} />
-                <input style={field} placeholder="Nom" value={f.name} onChange={set("name")} />
+                <TextInput label="Code setup (SETUP_CODE)" placeholder="Code setup (SETUP_CODE)" value={f.code} onChange={set("code")} />
+                <TextInput label="Nom" placeholder="Nom" value={f.name} onChange={set("name")} />
               </>
             )}
-            <input style={field} placeholder="E-mail" value={f.email} onChange={set("email")} autoComplete="email" />
-            <input style={field} placeholder="Mot de passe" type="password" value={f.password} onChange={set("password")} autoComplete="current-password" />
+            <TextInput label="E-mail" placeholder="E-mail" value={f.email} onChange={set("email")} autoComplete="email" />
+            <PasswordInput label="Mot de passe" placeholder="Mot de passe" value={f.password} onChange={set("password")} autoComplete="current-password" />
             {err && <p style={{ color: C.crit }}>{err}</p>}
-            <button style={btnPrimary} type="submit">{mode === "login" ? "Se connecter" : "Créer le compte pilote"}</button>
+            <Button type="submit" size="md" fullWidth>{mode === "login" ? "Se connecter" : "Créer le compte pilote"}</Button>
           </form>
-        </div>
-        <button style={{ ...btnPrimary, background: C.encre, width: "100%", marginTop: 12 }} onClick={() => setMode(mode === "login" ? "setup" : "login")}>
+        </Card>
+        <Button variant="filled" color="dark" fullWidth mt="md" onClick={() => setMode(mode === "login" ? "setup" : "login")}>
           {mode === "login" ? "Premier lancement ? Créer le compte" : "J'ai déjà un compte"}
-        </button>
+        </Button>
       </div>
     </div>
   );
