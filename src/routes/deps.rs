@@ -21,6 +21,7 @@ async fn is_pilot(s: &AppState, h: &HeaderMap) -> bool {
     matches!(current_user(&s.pool, h).await, Ok((_, r)) if r == "pilot")
 }
 
+/// Lie deux tâches (fin-début). Pilote uniquement, cycle refusé (D13).
 pub async fn create(State(s): State<AppState>, headers: HeaderMap, Json(input): Json<DepIn>) -> impl IntoResponse {
     if !is_pilot(&s, &headers).await {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
@@ -44,6 +45,7 @@ pub async fn create(State(s): State<AppState>, headers: HeaderMap, Json(input): 
     }
 }
 
+/// Délie deux tâches. Pilote uniquement.
 pub async fn delete(State(s): State<AppState>, headers: HeaderMap, Json(input): Json<DepIn>) -> impl IntoResponse {
     if !is_pilot(&s, &headers).await {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
@@ -87,8 +89,8 @@ pub async fn cascade_after_move(
         if id_str == &moved_id.to_string() {
             continue;
         }
-        let id: uuid::Uuid = id_str.parse().unwrap();
-        let before = rows.iter().find(|(r, _, _, _)| r == &id).unwrap();
+        let Ok(id) = id_str.parse::<uuid::Uuid>() else { continue };
+        let Some(before) = rows.iter().find(|(r, _, _, _)| r == &id) else { continue };
         if before.1 != *ns || before.2 != *ne {
             let _ = sqlx::query("UPDATE tasks SET start_date=$1, end_date=$2 WHERE id=$3")
                 .bind(*ns)

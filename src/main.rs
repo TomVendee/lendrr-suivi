@@ -1,3 +1,5 @@
+//! Suivi projet (LENDRR) — serveur unique Axum : API `/api`, MCP `/mcp`, front statique.
+//! Une seule image Docker, Postgres managé, migrations au démarrage (D2, D6).
 use std::net::SocketAddr;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};

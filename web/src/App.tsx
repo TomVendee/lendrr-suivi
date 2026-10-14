@@ -1,3 +1,4 @@
+/** Racine : login/setup puis Shell + vues (Météo par défaut côté pilote, Ma semaine côté membre). */
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, useMe } from "./api";

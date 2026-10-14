@@ -1,5 +1,12 @@
 use chrono::{Datelike, NaiveDate};
 
+/// Aujourd'hui calendaire au fuseau du projet (D16 : Europe/Paris).
+pub fn today_paris() -> NaiveDate {
+    chrono::Utc::now()
+        .with_timezone(&chrono_tz::Europe::Paris)
+        .date_naive()
+}
+
 /// Lundi de S01 : 24/08/2026 (réglable via settings en base ; constante = défaut).
 pub fn project_start() -> NaiveDate {
     NaiveDate::from_ymd_opt(2026, 8, 24).unwrap()

@@ -1,12 +1,12 @@
+/** Écran Charge : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, fmtH } from "../api";
+import { api, fmtH, fmtN } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, kpi } from "../theme";
 
 interface Cell { week: number; planned: number; real: number; capacity: number }
 interface Row { user_id: string; name: string; weeks: Cell[] }
 
-const fmtN = (n: number) => n.toFixed(1).replace(".", ",");
 // Lundi de S01 = 24/08/2026 → lundi de la semaine N.
 const mondayOf = (w: number) => {
   const d = new Date(2026, 7, 24 + (w - 1) * 7);

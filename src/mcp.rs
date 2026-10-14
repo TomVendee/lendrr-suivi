@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
-use http::request::Parts;
+use axum::http::request::Parts;
 use rmcp::{
     ErrorData,
-    handler::server::{
-        tool::{Extension, ToolRouter},
-        wrapper::Parameters,
-    },
+    handler::server::{tool::Extension, wrapper::Parameters},
     model::{CallToolResult, ContentBlock},
     schemars, tool, tool_router,
     transport::streamable_http_server::{
@@ -18,7 +15,7 @@ use serde::Deserialize;
 
 use crate::domain::{
     load::{Allocation, planned_load},
-    working_days::{project_week, week_bounds},
+    working_days::{project_week, today_paris, week_bounds},
 };
 
 #[derive(Clone)]
@@ -54,11 +51,6 @@ pub struct ValidateTaskArgs {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct NoArgs {}
 
-fn today_paris() -> chrono::NaiveDate {
-    chrono::Utc::now()
-        .with_timezone(&chrono_tz::Europe::Paris)
-        .date_naive()
-}
 
 async fn user_from_parts(
     pool: &sqlx::PgPool,
@@ -70,10 +62,7 @@ async fn user_from_parts(
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .ok_or_else(|| ErrorData::invalid_params("missing-bearer-token", None))?;
-    let digest = {
-        use sha2::{Digest, Sha256};
-        format!("{:x}", Sha256::digest(tok.as_bytes()))
-    };
+    let digest = crate::routes::sha256_hex(tok);
     sqlx::query_as::<_, (uuid::Uuid, String)>(
         "SELECT u.id, u.role FROM api_tokens t JOIN users u ON u.id = t.user_id
          WHERE t.token_hash = $1 AND NOT t.revoked",
@@ -279,9 +268,11 @@ impl SuiviMcp {
     }
 }
 
-pub fn streamable_service(
-    pool: sqlx::PgPool,
-) -> StreamableHttpService<SuiviMcp, LocalSessionManager> {
+pub type McpService = StreamableHttpService<SuiviMcp, LocalSessionManager>;
+
+/// Monte le serveur MCP en HTTP streamable **stateless** (D18) : aucune session
+/// en mémoire, donc compatible répliques multiples et redémarrages.
+pub fn streamable_service(pool: sqlx::PgPool) -> McpService {
     StreamableHttpService::new(
         move || Ok(SuiviMcp { pool: pool.clone() }),
         Arc::new(LocalSessionManager::default()),

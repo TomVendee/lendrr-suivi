@@ -1,15 +1,5 @@
-/// Les 7 alertes du cahier, évaluées en pur (seuils réglables).
-#[derive(Debug, Clone, PartialEq)]
-pub enum Alert {
-    Overload { user: String, week: i32 },
-    Overrun { task: String, user: String },
-    MissingHours { user: String, week: i32 },
-    Late { task: String },
-    BlockingLate { task: String, succ: String },
-    MilestoneThreatened { milestone: String },
-    Incomplete { task: String },
-}
-
+/// Seuils des alertes du cahier (réglables) + prédicat de dépassement.
+/// Les 7 alertes sont assemblées dans `routes::stats::compute_alerts`.
 pub struct Thresholds {
     pub overrun_pct: f64, // 0.25
     pub overrun_hours: f64, // 1.0

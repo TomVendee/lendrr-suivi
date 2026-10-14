@@ -3,6 +3,7 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 
+/// Hache en argon2id (D8). Le sel est aléatoire par mot de passe.
 pub fn hash_password(password: &str) -> String {
     let salt = SaltString::generate(&mut OsRng);
     Argon2::default()
@@ -11,6 +12,7 @@ pub fn hash_password(password: &str) -> String {
         .to_string()
 }
 
+/// Vérifie sans fuir d'info : hash illisible ou faux mot de passe = false.
 pub fn verify_password(hash: &str, password: &str) -> bool {
     let Ok(parsed) = PasswordHash::new(hash) else {
         return false;

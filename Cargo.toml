@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.8", features = ["json", "matched-path"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
-tower-http = { version = "0.6", features = ["fs", "trace"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "macros", "migrate", "chrono", "uuid"] }
@@ -22,5 +21,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 rmcp = { version = "3.5.1", features = ["server", "transport-streamable-http-server", "macros"] }
 schemars = "1.2.3"
 base64 = "0.23.1"
-http = "1.5.0"
 

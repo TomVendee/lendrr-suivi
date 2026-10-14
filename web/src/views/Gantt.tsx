@@ -1,7 +1,7 @@
+/** Écran Gantt : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, fmtDate } from "../api";
-import { useUsers } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card } from "../theme";
 
 interface GTask {
@@ -19,7 +19,6 @@ export function Gantt() {
   const [critSeul, setCritSeul] = useState(false);
   const [ouverts, setOuverts] = useState<Record<string, boolean>>({ HARD: true, IA: true, JALONS: true });
   const q = useQuery({ queryKey: ["gantt"], queryFn: () => api<GanttData>("/api/gantt") });
-  const users = useUsers();
   if (!q.data) return <p>Chargement…</p>;
   const { today, tasks, deps } = q.data;
 
@@ -58,8 +57,6 @@ export function Gantt() {
     if (t.critical) return { ...base, background: C.accent };
     return { ...base, background: "#9AA0A6", opacity: critSeul ? 0.18 : 1 };
   };
-  const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? "";
-
   const rows: React.ReactNode[] = [];
   const places: Record<string, { x0: number; x1: number; y: number; crit: boolean; title: string }> = {};
   // L'overlay des liens couvre aussi l'en-tête (52 px) : on part de 52.
@@ -81,7 +78,6 @@ export function Gantt() {
       </div>
     );
   };
-  void nameOf;
   const jalonRow = (t: GTask) => {
     y += ROW_T;
     return (
@@ -164,7 +160,6 @@ export function Gantt() {
 
   const actif = { background: C.encre, color: C.fond };
   const inactif = { background: "transparent", color: C.encre };
-  void nameOf;
 
   return (
     <>

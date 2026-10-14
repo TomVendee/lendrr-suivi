@@ -26,26 +26,24 @@ pub async fn setup(State(s): State<AppState>, Json(input): Json<SetupIn>) -> imp
     if expected.is_empty() || input.code != expected {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "bad-code"}))).into_response();
     }
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
-        .fetch_one(&s.pool)
-        .await
-        .unwrap_or(1);
-    if count > 0 {
-        return (StatusCode::GONE, Json(json!({"error": "already-initialized"}))).into_response();
-    }
     let hash = crate::auth::hash_password(&input.password);
-    let id: uuid::Uuid = sqlx::query_scalar(
-        "INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, 'pilot') RETURNING id",
+    // Atomique : le WHERE NOT EXISTS évite deux pilotes en cas de double POST.
+    let id: Option<uuid::Uuid> = sqlx::query_scalar(
+        "INSERT INTO users (name, email, password_hash, role)
+         SELECT $1, $2, $3, 'pilot' WHERE NOT EXISTS (SELECT 1 FROM users)
+         RETURNING id",
     )
     .bind(input.name.trim())
     .bind(input.email.trim())
     .bind(hash)
-    .fetch_one(&s.pool)
+    .fetch_optional(&s.pool)
     .await
-    .map_err(|_| ())
-    .unwrap_or_else(|_| uuid::Uuid::nil());
-    if id.is_nil() {
-        return (StatusCode::CONFLICT, Json(json!({"error": "email-taken"}))).into_response();
+    .unwrap_or(None);
+    match id {
+        Some(id) => (StatusCode::CREATED, Json(json!({"id": id, "role": "pilot"}))).into_response(),
+        None => {
+            // Soit déjà initialisé, soit e-mail pris : on ne distingue pas (anti-énumération).
+            (StatusCode::GONE, Json(json!({"error": "already-initialized"}))).into_response()
+        }
     }
-    (StatusCode::CREATED, Json(json!({"id": id, "role": "pilot"}))).into_response()
 }

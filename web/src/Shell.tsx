@@ -1,3 +1,4 @@
+/** Coquille : sidebar sombre + onglets mobile, badges, carte utilisateur. Copie la structure des .dc.html. */
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, initials, type Me } from "./api";

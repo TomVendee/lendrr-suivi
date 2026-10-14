@@ -8,18 +8,13 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{AppState, current_user};
-use crate::domain::working_days::{project_week, week_bounds};
+use crate::domain::working_days::{project_week, today_paris, week_bounds};
 
 #[derive(Deserialize)]
 pub struct WeekQ {
     pub week: Option<i32>,
 }
 
-fn today_paris() -> chrono::NaiveDate {
-    chrono::Utc::now()
-        .with_timezone(&chrono_tz::Europe::Paris)
-        .date_naive()
-}
 
 fn is_pilot(role: &str) -> bool {
     role == "pilot"

@@ -1,6 +1,7 @@
+/** Écran Semaine : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, fmtDate, fmtH, type Me } from "../api";
+import { api, fmtDate, fmtH, fmtN, type Me } from "../api";
 import { TAG, alertDetail, type Alert } from "./Alertes";
 import { useIsMobile } from "../Shell";
 import { AxisChip, C, F_MONO, F_TITRE, StatusPill, btnPrimary, card, field, labelSm, legend } from "../theme";
@@ -14,7 +15,6 @@ interface MyWeek {
   planned: number; real: number; capacity: number;
 }
 
-const fmtN = (n: number) => n.toFixed(1).replace(".", ",");
 const STATUS_OPTIONS = [["todo", "À faire"], ["in_progress", "En cours"], ["blocked", "Bloquée"], ["done", "Terminée"]] as const;
 
 export function Semaine({ me }: { me: Me }) {

@@ -1,3 +1,4 @@
+/** Écran Alertes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import { C, F_TITRE, PageHead, card } from "../theme";
@@ -94,9 +95,21 @@ export function Synthese({ role }: { role: string }) {
       <section aria-label="Export" style={card}>
         <h2 style={{ margin: "0 0 8px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Prévu contre réalisé (soutenance)</h2>
         <p style={{ color: C.discret }}>Le « prévu » est lu dans la baseline du lundi, pas dans le planning courant.</p>
-        <a href="/api/export" style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 18px", borderRadius: 8, background: C.accent, color: "#FFFFFF", fontWeight: 600, textDecoration: "none" }}>
+        <button
+          style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 18px", border: 0, borderRadius: 8, background: C.accent, color: "#FFFFFF", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          onClick={async () => {
+            const r = await fetch("/api/export");
+            if (!r.ok) return;
+            const blob = await r.blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "suivi-export.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }}
+        >
           Télécharger le JSON prévu / réalisé
-        </a>
+        </button>
       </section>
     </>
   );

@@ -9,18 +9,16 @@ use serde_json::json;
 use std::collections::{HashMap, HashSet};
 
 use super::{AppState, current_user};
-use crate::domain::cpm::critical_path;
+use crate::domain::{
+    cpm::critical_path,
+    working_days::today_paris,
+};
 
 #[derive(Deserialize)]
 pub struct GanttQ {
     pub axis: Option<String>,
 }
 
-fn today_paris() -> chrono::NaiveDate {
-    chrono::Utc::now()
-        .with_timezone(&chrono_tz::Europe::Paris)
-        .date_naive()
-}
 
 async fn graph(pool: &sqlx::PgPool)
     -> (Vec<(uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool)>,

@@ -1,7 +1,7 @@
 use axum::{
     Router,
     http::{HeaderMap, StatusCode},
-    response::{Html, IntoResponse, Json},
+    response::{IntoResponse, Json},
     routing::{delete, get, post, put},
 };
 use serde_json::json;
@@ -22,15 +22,30 @@ pub(crate) mod week;
 pub struct AppState {
     pub pool: PgPool,
     pub setup_code: Option<String>,
+    /// `Secure` sur les cookies sauf en http local (ne change rien en prod https).
+    pub secure_cookies: bool,
 }
 
+/// Routeur prod : config lue dans l'environnement (Cassiopée met tout en chaînes).
 pub fn router(pool: PgPool) -> Router {
-    router_with_code(pool, std::env::var("SETUP_CODE").ok().filter(|s| !s.is_empty()))
+    let secure = !std::env::var("APP_URL").unwrap_or_default().starts_with("http://");
+    let state = AppState {
+        pool: pool.clone(),
+        setup_code: std::env::var("SETUP_CODE").ok().filter(|s| !s.is_empty()),
+        secure_cookies: secure,
+    };
+    let mcp_service = crate::mcp::streamable_service(pool);
+    build(state, mcp_service)
 }
 
+/// Variante de test : code setup injecté, cookies `Secure` (comportement prod).
 pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
-    let state = AppState { pool: pool.clone(), setup_code };
+    let state = AppState { pool: pool.clone(), setup_code, secure_cookies: true };
     let mcp_service = crate::mcp::streamable_service(pool);
+    build(state, mcp_service)
+}
+
+fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/ready", get(ready))
@@ -39,6 +54,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/login", post(me::login))
         .route("/api/logout", post(me::logout))
         .route("/api/tokens", post(me::create_token))
+        .route("/api/tokens/{id}", delete(me::revoke_token))
         .route("/api/users", post(me::create_user).get(me::list_users))
         .route("/setup", post(setup::setup))
         .route("/api/tasks", get(tasks::list).post(tasks::create))
@@ -74,11 +90,10 @@ async fn ready(
 ) -> impl IntoResponse {
     match sqlx::query("SELECT 1").fetch_one(&s.pool).await {
         Ok(_) => (StatusCode::OK, Json(json!({"status": "ready"}))).into_response(),
-        Err(e) => (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({"status": "not-ready", "detail": e.to_string()})),
-        )
-            .into_response(),
+        Err(e) => {
+            tracing::warn!("not ready: {e}");
+            (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"status": "not-ready"}))).into_response()
+        }
     }
 }
 
@@ -86,6 +101,7 @@ async fn hello() -> impl IntoResponse {
     Json(json!({"name": "Suivi projet", "version": env!("CARGO_PKG_VERSION")}))
 }
 
+/// Extrait le `sid` du cookie, sans jamais lever.
 pub fn session_cookie(headers: &HeaderMap) -> Option<String> {
     headers
         .get(axum::http::header::COOKIE)?
@@ -99,6 +115,7 @@ pub fn session_cookie(headers: &HeaderMap) -> Option<String> {
         .next()
 }
 
+/// Extrait le token de `Authorization: Bearer`, sans jamais lever.
 pub fn bearer(headers: &HeaderMap) -> Option<String> {
     headers
         .get(axum::http::header::AUTHORIZATION)?
@@ -118,7 +135,8 @@ pub async fn current_user(
     if let Some(sid) = session_cookie(headers) {
         let sid: uuid::Uuid = sid.parse().map_err(|_| StatusCode::UNAUTHORIZED)?;
         let row: Option<(uuid::Uuid, String)> = sqlx::query_as(
-            "SELECT u.id, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = $1",
+            "SELECT u.id, u.role FROM sessions s JOIN users u ON u.id = s.user_id
+             WHERE s.id = $1 AND s.expires_at > now()",
         )
         .bind(sid)
         .fetch_optional(pool)
@@ -145,11 +163,7 @@ pub async fn current_user(
     Err(StatusCode::UNAUTHORIZED)
 }
 
-fn sha256_hex(s: &str) -> String {
+pub(crate) fn sha256_hex(s: &str) -> String {
     use sha2::{Digest, Sha256};
     format!("{:x}", Sha256::digest(s.as_bytes()))
-}
-
-pub fn _html() -> Html<&'static str> {
-    Html("<h1>unused</h1>")
 }

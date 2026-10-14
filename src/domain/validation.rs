@@ -4,9 +4,8 @@ pub fn can_validate(lead_count: usize) -> bool {
     lead_count == 1
 }
 
-/// Une révision touche dates/heures/collaborateurs ? → repasse en attente.
-pub fn needs_revalidation(dates_changed: bool, hours_changed: bool, assignees_changed: bool) -> bool {
-    dates_changed || hours_changed || assignees_changed
+pub fn valid_axis(code: &str) -> bool {
+    matches!(code, "HARD" | "SOFT" | "IA" | "PILOTAGE" | "VIDEO")
 }
 
 #[cfg(test)]
@@ -18,7 +17,7 @@ mod tests {
         assert!(can_validate(1));
         assert!(!can_validate(0));
         assert!(!can_validate(2));
-        assert!(needs_revalidation(true, false, false));
-        assert!(!needs_revalidation(false, false, false));
+        assert!(valid_axis("HARD"));
+        assert!(!valid_axis("NOPE"));
     }
 }

@@ -14,7 +14,7 @@ use crate::domain::{
     alerts::{Thresholds, overrun},
     cpm::critical_path,
     load::{Allocation, planned_load},
-    working_days::project_week,
+    working_days::{project_week, today_paris},
 };
 
 #[derive(Deserialize)]
@@ -23,11 +23,6 @@ pub struct LoadQ {
     pub to: Option<i32>,
 }
 
-fn today_paris() -> chrono::NaiveDate {
-    chrono::Utc::now()
-        .with_timezone(&chrono_tz::Europe::Paris)
-        .date_naive()
-}
 
 /// F6 : plan de charge personne × semaine (prévu, réel, capacité).
 /// Visible par tous (cahier) ; calculé à la lecture, pas de temps réel en V1 (D14).
@@ -143,9 +138,11 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
         let my: Vec<Allocation> = assigns
             .iter()
             .filter(|(_, u, _, _)| u == id)
-            .map(|(tid, _, _, h)| {
-                let t = tasks.iter().find(|(i, _, _, _, _, _, _)| i == tid).unwrap();
-                Allocation { task_start: t.3, task_end: t.4, hours: *h }
+            .filter_map(|(tid, _, _, h)| {
+                tasks
+                    .iter()
+                    .find(|(i, _, _, _, _, _, _)| i == tid)
+                    .map(|t| Allocation { task_start: t.3, task_end: t.4, hours: *h })
             })
             .collect();
         for w in cur..=(cur + 6) {
@@ -309,23 +306,13 @@ pub async fn graphs(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
 
     let mut weeks = vec![];
     let (mut cum_p, mut cum_r) = (0.0, 0.0);
+    // Même prorata qu'en F3/F6 : heures réparties au prorata des jours ouvrés.
+    let allocs: Vec<Allocation> = assigns
+        .iter()
+        .map(|(_, _, h, s, e)| Allocation { task_start: *s, task_end: *e, hours: *h })
+        .collect();
     for w in from..=to {
-        let p: f64 = assigns
-            .iter()
-            .map(|(_, _, h, s, e)| {
-                let tot = crate::domain::working_days::working_days_between(*s, *e);
-                if tot == 0 {
-                    return 0.0;
-                }
-                let (wmon, wsun) = crate::domain::working_days::week_bounds(w);
-                let a = (*s).max(wmon);
-                let b = (*e).min(wsun);
-                if b < a {
-                    return 0.0;
-                }
-                h * (crate::domain::working_days::working_days_between(a, b) as f64) / (tot as f64)
-            })
-            .sum();
+        let p: f64 = allocs.iter().map(|a| crate::domain::load::hours_in_week(a, w)).sum();
         let r: f64 = sqlx::query_scalar("SELECT COALESCE(SUM(hours),0) FROM time_entries WHERE week=$1")
             .bind(w)
             .fetch_one(&s.pool)

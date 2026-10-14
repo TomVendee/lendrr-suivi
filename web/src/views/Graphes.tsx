@@ -1,5 +1,6 @@
+/** Écran Graphes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
-import { api, fmtH } from "../api";
+import { api, fmtH, fmtN } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, kpi } from "../theme";
 
 interface Graphs {
@@ -10,7 +11,6 @@ interface Graphs {
   tasks_done: number; tasks_total: number;
 }
 
-const fmtN = (n: number) => n.toFixed(1).replace(".", ",");
 const pad = (w: number) => `S${String(w).padStart(2, "0")}`;
 
 export function Graphes({ goCharge }: { goCharge: () => void }) {

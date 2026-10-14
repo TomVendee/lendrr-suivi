@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{AppState, current_user};
-use crate::domain::validation::can_validate;
+use crate::domain::validation::{can_validate, valid_axis};
 
 /// F11 : file des tâches proposées / modifications en attente (pilote).
 pub async fn list(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
@@ -97,6 +97,25 @@ pub async fn update_payload(
     if !crate::domain::validation::can_validate(leads) {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "need-exactly-one-lead"}))).into_response();
     }
+    // Mêmes règles qu'à la création : titre, axe, dates, rôles, heures.
+    let ok = payload.get("title").and_then(|v| v.as_str()).map(|s| !s.trim().is_empty()).unwrap_or(false)
+        && payload.get("axis_code").and_then(|v| v.as_str()).map(valid_axis).unwrap_or(false)
+        && match (
+            payload.get("start_date").and_then(|v| v.as_str()).and_then(|s| s.parse::<chrono::NaiveDate>().ok()),
+            payload.get("end_date").and_then(|v| v.as_str()).and_then(|s| s.parse::<chrono::NaiveDate>().ok()),
+        ) {
+            (Some(s), Some(e)) => e >= s,
+            _ => false,
+        }
+        && payload.get("assignments").and_then(|v| v.as_array()).map(|a| {
+            a.iter().all(|x| {
+                matches!(x.get("role").and_then(|v| v.as_str()), Some("lead" | "support"))
+                    && x.get("planned_hours").and_then(|v| v.as_f64()).map(|h| h >= 0.0).unwrap_or(false)
+            })
+        }).unwrap_or(false);
+    if !ok {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-payload"}))).into_response();
+    }
     let n = sqlx::query("UPDATE task_revisions SET payload=$1 WHERE id=$2 AND status='pending'")
         .bind(payload)
         .bind(id)
@@ -110,7 +129,9 @@ pub async fn update_payload(
     (StatusCode::OK, Json(json!({"ok": true}))).into_response()
 }
 
-pub async fn apply_payload(    pool: &sqlx::PgPool,
+/// Applique un payload validé : crée la tâche ou met à jour le publié, en transaction.
+pub async fn apply_payload(
+    pool: &sqlx::PgPool,
     task_id: Option<uuid::Uuid>,
     p: &serde_json::Value,
 ) -> Result<uuid::Uuid, &'static str> {
@@ -122,7 +143,7 @@ pub async fn apply_payload(    pool: &sqlx::PgPool,
     let end: chrono::NaiveDate = p
         .get("end_date").and_then(|v| v.as_str()).and_then(|s| s.parse().ok())
         .ok_or("bad-dates")?;
-    if title.is_empty() || end < start || !matches!(axis, "HARD" | "SOFT" | "IA" | "PILOTAGE" | "VIDEO") {
+    if title.is_empty() || end < start || !valid_axis(axis) {
         return Err("invalid-payload");
     }
     let assigns = p.get("assignments").and_then(|v| v.as_array()).cloned().unwrap_or_default();
@@ -130,6 +151,7 @@ pub async fn apply_payload(    pool: &sqlx::PgPool,
     if !can_validate(leads) {
         return Err("need-exactly-one-lead");
     }
+    let mut tx = pool.begin().await.map_err(|_| "db")?;
     let id = match task_id {
         Some(t) => {
             let n = sqlx::query(
@@ -143,14 +165,18 @@ pub async fn apply_payload(    pool: &sqlx::PgPool,
             .bind(p.get("done_criteria").and_then(|v| v.as_str()).unwrap_or(""))
             .bind(p.get("milestone").and_then(|v| v.as_bool()).unwrap_or(false))
             .bind(t)
-            .execute(pool)
+            .execute(&mut *tx)
             .await
             .map(|r| r.rows_affected())
             .unwrap_or(0);
             if n == 0 {
                 return Err("task-gone");
             }
-            let _ = sqlx::query("DELETE FROM assignments WHERE task_id=$1").bind(t).execute(pool).await;
+            sqlx::query("DELETE FROM assignments WHERE task_id=$1")
+                .bind(t)
+                .execute(&mut *tx)
+                .await
+                .map_err(|_| "db")?;
             t
         }
         None => {
@@ -164,7 +190,7 @@ pub async fn apply_payload(    pool: &sqlx::PgPool,
             .bind(end)
             .bind(p.get("done_criteria").and_then(|v| v.as_str()).unwrap_or(""))
             .bind(p.get("milestone").and_then(|v| v.as_bool()).unwrap_or(false))
-            .fetch_one(pool)
+            .fetch_one(&mut *tx)
             .await
             .map_err(|_| "insert-failed")?
         }
@@ -177,15 +203,17 @@ pub async fn apply_payload(    pool: &sqlx::PgPool,
         if hours < 0.0 {
             return Err("negative-hours");
         }
-        let _ = sqlx::query(
+        sqlx::query(
             "INSERT INTO assignments (task_id, user_id, role, planned_hours) VALUES ($1,$2,$3,$4)",
         )
         .bind(id)
         .bind(auid)
         .bind(a.get("role").and_then(|v| v.as_str()).unwrap_or("support"))
         .bind(hours)
-        .execute(pool)
-        .await;
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| "bad-assignee")?;
     }
+    tx.commit().await.map_err(|_| "db")?;
     Ok(id)
 }

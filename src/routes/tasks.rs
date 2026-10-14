@@ -10,7 +10,7 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{AppState, current_user};
-use crate::domain::validation::can_validate;
+use crate::domain::validation::{can_validate, valid_axis};
 
 #[derive(Serialize)]
 pub struct AssignmentOut {
@@ -70,9 +70,6 @@ pub struct StatusIn {
     pub status: String,
 }
 
-fn valid_axis(code: &str) -> bool {
-    matches!(code, "HARD" | "SOFT" | "IA" | "PILOTAGE" | "VIDEO")
-}
 
 fn check_assignments(a: &[AssignmentIn]) -> Result<(), &'static str> {
     if a.iter().any(|x| x.role != "lead" && x.role != "support") {
@@ -88,14 +85,19 @@ fn check_assignments(a: &[AssignmentIn]) -> Result<(), &'static str> {
     Ok(())
 }
 
-pub async fn axes(State(s): State<AppState>) -> impl IntoResponse {
+/// Référentiel des axes (HARD, SOFT, IA, PILOTAGE, VIDEO). Connecté uniquement.
+pub async fn axes(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    if current_user(&s.pool, &headers).await.is_err() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    }
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT code, label FROM axes ORDER BY code")
         .fetch_all(&s.pool)
         .await
         .unwrap_or_default();
-    Json(rows.iter().map(|(c, l)| json!({"code": c, "label": l})).collect::<Vec<_>>())
+    Json(rows.iter().map(|(c, l)| json!({"code": c, "label": l})).collect::<Vec<_>>()).into_response()
 }
 
+/// Liste les tâches publiées, filtrables par axe et statut. Connecté uniquement.
 pub async fn list(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -168,6 +170,7 @@ async fn task_out(
     }
 }
 
+/// Fiche tâche : répartition, dépendances amont. Connecté uniquement.
 pub async fn get(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -191,6 +194,7 @@ pub async fn get(
     }
 }
 
+/// Crée une tâche (pilote : publiée ; membre : révision en attente, F11). Exige 1 lead.
 pub async fn create(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -223,41 +227,53 @@ pub async fn create(
         .fetch_one(&s.pool)
         .await
         .unwrap_or_else(|_| uuid::Uuid::nil());
-        // ponytail: task_id factice — la vraie tâche naît à la validation (F11).
-        let _ = rev;
         return (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation"}))).into_response();
     }
     let milestone = input.milestone.unwrap_or(false);
-    let rec: Option<uuid::Uuid> = sqlx::query_scalar(
+    // Tâche + assignations en une transaction : jamais de tâche sans pilote.
+    let mut tx = match s.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
+    };
+    let id: uuid::Uuid = match sqlx::query_scalar(
         "INSERT INTO tasks (title, axis_code, start_date, end_date, done_criteria, milestone)
          VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
     )
     .bind(input.title.trim())
-    .bind(input.axis_code)
+    .bind(&input.axis_code)
     .bind(input.start_date)
     .bind(input.end_date)
-    .bind(input.done_criteria.unwrap_or_default())
+    .bind(input.done_criteria.clone().unwrap_or_default())
     .bind(milestone)
-    .fetch_optional(&s.pool)
+    .fetch_one(&mut *tx)
     .await
-    .unwrap_or(None);
-    let Some(id) = rec else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "insert-failed"}))).into_response();
+    {
+        Ok(id) => id,
+        Err(_) => return (StatusCode::BAD_REQUEST, Json(json!({"error": "insert-failed"}))).into_response(),
     };
     for a in &input.assignments {
-        let _ = sqlx::query(
+        if sqlx::query(
             "INSERT INTO assignments (task_id, user_id, role, planned_hours) VALUES ($1,$2,$3,$4)",
         )
         .bind(id)
         .bind(a.user_id)
         .bind(&a.role)
         .bind(a.planned_hours)
-        .execute(&s.pool)
-        .await;
+        .execute(&mut *tx)
+        .await
+        .is_err()
+        {
+            // Assignee inconnu : tout est annulé, pas de tâche bancale.
+            return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-assignee"}))).into_response();
+        }
+    }
+    if tx.commit().await.is_err() {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response();
     }
     (StatusCode::CREATED, Json(json!({"id": id}))).into_response()
 }
 
+/// Modifie une tâche (pilote : direct + cascade F2 ; membre : révision en attente).
 pub async fn update(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -301,35 +317,48 @@ pub async fn update(
     let Some((_, old_end)) = old else {
         return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
     };
+    let mut tx = match s.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
+    };
     let n = sqlx::query(
         "UPDATE tasks SET title=$1, axis_code=$2, start_date=$3, end_date=$4,
          done_criteria=$5, milestone=$6 WHERE id=$7",
     )
     .bind(input.title.trim())
-    .bind(input.axis_code)
+    .bind(&input.axis_code)
     .bind(input.start_date)
     .bind(input.end_date)
-    .bind(input.done_criteria.unwrap_or_default())
+    .bind(input.done_criteria.clone().unwrap_or_default())
     .bind(input.milestone.unwrap_or(false))
     .bind(id)
-    .execute(&s.pool)
+    .execute(&mut *tx)
     .await
     .map(|r| r.rows_affected())
     .unwrap_or(0);
     if n == 0 {
         return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
     }
-    let _ = sqlx::query("DELETE FROM assignments WHERE task_id=$1").bind(id).execute(&s.pool).await;
+    if sqlx::query("DELETE FROM assignments WHERE task_id=$1").bind(id).execute(&mut *tx).await.is_err() {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response();
+    }
     for a in &input.assignments {
-        let _ = sqlx::query(
+        if sqlx::query(
             "INSERT INTO assignments (task_id, user_id, role, planned_hours) VALUES ($1,$2,$3,$4)",
         )
         .bind(id)
         .bind(a.user_id)
         .bind(&a.role)
         .bind(a.planned_hours)
-        .execute(&s.pool)
-        .await;
+        .execute(&mut *tx)
+        .await
+        .is_err()
+        {
+            return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-assignee"}))).into_response();
+        }
+    }
+    if tx.commit().await.is_err() {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response();
     }
     // F2 : la fin recule → décalage en cascade (D13 : seulement si chevauchement,
     // jalons jamais bougés, sans repasser par la validation).
@@ -341,17 +370,31 @@ pub async fn update(
     (StatusCode::OK, Json(json!({"ok": true, "shifted": shifted, "milestones_threatened": threatened}))).into_response()
 }
 
+/// Change le statut. Pilote projet ou pilote de la tâche uniquement.
 pub async fn set_status(
     State(s): State<AppState>,
     headers: HeaderMap,
     Path(id): Path<uuid::Uuid>,
     Json(input): Json<StatusIn>,
 ) -> impl IntoResponse {
-    if current_user(&s.pool, &headers).await.is_err() {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
-    }
+    };
     if !matches!(input.status.as_str(), "todo" | "in_progress" | "blocked" | "done") {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-status"}))).into_response();
+    }
+    // Seul le pilote projet ou le pilote de la tâche change son statut.
+    if role != "pilot" {
+        let lead: Option<uuid::Uuid> = sqlx::query_scalar(
+            "SELECT user_id FROM assignments WHERE task_id=$1 AND role='lead'",
+        )
+        .bind(id)
+        .fetch_optional(&s.pool)
+        .await
+        .unwrap_or(None);
+        if lead != Some(uid) {
+            return (StatusCode::FORBIDDEN, Json(json!({"error": "lead-or-pilot-only"}))).into_response();
+        }
     }
     let n = sqlx::query("UPDATE tasks SET status=$1 WHERE id=$2")
         .bind(&input.status)

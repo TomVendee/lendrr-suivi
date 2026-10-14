@@ -1,3 +1,4 @@
+/** Client REST + types partagés + formats jj/mm et heures fr. */
 import { useQuery } from "@tanstack/react-query";
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -48,15 +49,10 @@ export function useUsers() {
   return useQuery({ queryKey: ["users"], queryFn: () => api<User[]>("/api/users") });
 }
 
-export const STATUS_FR: Record<string, string> = {
-  todo: "À faire",
-  in_progress: "En cours",
-  blocked: "Bloquée",
-  done: "Terminée",
-};
-
 export const fmtH = (h: number) =>
   `${h.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} h`;
+
+export const fmtN = (n: number) => n.toFixed(1).replace(".", ",");
 
 export const fmtDate = (iso: string) => {
   const p = iso.split("-");

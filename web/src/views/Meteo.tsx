@@ -1,5 +1,7 @@
+/** Écran Meteo : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
 import { api, fmtDate, fmtH, useUsers, type Task } from "../api";
+import { TAG as ALERT_TAG } from "./Alertes";
 import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi } from "../theme";
 
 interface MeteoCard {
@@ -16,16 +18,6 @@ interface GanttT {
 }
 
 const AXIS_LABEL: Record<string, string> = { HARD: "HARD", SOFT: "SOFT", IA: "IA", PILOTAGE: "PILOTAGE", VIDEO: "VIDÉO" };
-
-const ALERT_TAG: Record<string, { label: string; style: React.CSSProperties }> = {
-  "milestone-threatened": { label: "Jalon menacé", style: { background: C.crit, color: "#FFFFFF" } },
-  "blocking-late": { label: "Retard bloquant", style: { background: C.critFond, color: "#8F1C13" } },
-  late: { label: "Tâche en retard", style: { background: C.critFond, color: "#8F1C13" } },
-  overload: { label: "Surcharge prévue", style: { background: C.warnFond, color: "#7A4F10" } },
-  "missing-hours": { label: "Heures non déclarées", style: { background: C.warnFond, color: "#7A4F10" } },
-  overrun: { label: "Dépassement réel", style: { background: "#E9EBEE", color: C.encre } },
-  incomplete: { label: "Tâche incomplète", style: { background: "#E9EBEE", color: C.encre } },
-};
 
 function alertDetail(a: Alert): string {
   switch (a.kind) {

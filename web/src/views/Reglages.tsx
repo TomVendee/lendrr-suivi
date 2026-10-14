@@ -1,3 +1,4 @@
+/** Écran Reglages : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type User } from "../api";
@@ -6,7 +7,7 @@ import { C, F_MONO, F_TITRE, PageHead, btnPrimary, btnSecond, card, field } from
 export function Reglages() {
   const qc = useQueryClient();
   const [msg, setMsg] = useState("");
-  const [nu, setNu] = useState({ name: "", email: "", password: "" });
+  const [nu, setNu] = useState({ name: "", email: "", password: "", role: "member" });
   const [importTxt, setImportTxt] = useState("");
   const [report, setReport] = useState("");
 
@@ -49,10 +50,17 @@ export function Reglages() {
             <label htmlFor="nu-mdp" style={{ fontWeight: 600, fontSize: 14 }}>Mot de passe (10 caractères min)</label>
             <input id="nu-mdp" style={field} type="password" value={nu.password} onChange={(e) => setNu({ ...nu, password: e.target.value })} />
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label htmlFor="nu-role" style={{ fontWeight: 600, fontSize: 14 }}>Rôle</label>
+            <select id="nu-role" style={field} value={nu.role} onChange={(e) => setNu({ ...nu, role: e.target.value })}>
+              <option value="member">Membre</option>
+              <option value="pilot">Pilote</option>
+            </select>
+          </div>
         </div>
         <div style={{ paddingTop: 12 }}>
           <button style={btnSecond} onClick={() => act(
-            () => api("/api/users", { method: "POST", body: JSON.stringify({ name: nu.name, email: nu.email, password: nu.password }) }).then(() => setNu({ name: "", email: "", password: "" })),
+            () => api("/api/users", { method: "POST", body: JSON.stringify({ name: nu.name, email: nu.email, password: nu.password, role: nu.role }) }).then(() => setNu({ name: "", email: "", password: "", role: "member" })),
             "Compte créé."
           )}>Créer le compte</button>
         </div>
@@ -79,7 +87,17 @@ export function Reglages() {
         <p style={{ color: C.discret, fontSize: 14 }}>La photo du lundi fige le « prévu » de la semaine. L'export complet est stocké en base (pas de S3 en V1).</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <button style={btnSecond} onClick={() => act(() => api("/api/baselines", { method: "POST" }), "Baseline figée.")}>Figer la baseline</button>
-          <a href="/api/export" style={{ ...btnSecond, textDecoration: "none", display: "inline-flex", alignItems: "center" }}>Télécharger l'export</a>
+          <button style={btnSecond} onClick={() => act(async () => {
+            // Téléchargement authentifié (le cookie suit) : la synthèse reste privée.
+            const r = await fetch("/api/export");
+            if (!r.ok) throw new Error(await r.text());
+            const blob = await r.blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "suivi-export.json";
+            a.click();
+            URL.revokeObjectURL(a.href);
+          }, "Export téléchargé.")}>Télécharger l'export</button>
         </div>
       </section>
 

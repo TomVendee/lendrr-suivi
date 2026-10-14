@@ -10,7 +10,7 @@ use serde_json::json;
 use std::collections::HashMap;
 
 use super::{AppState, current_user};
-use crate::domain::deps::would_cycle;
+use crate::domain::{deps::would_cycle, validation::valid_axis};
 
 #[derive(Deserialize)]
 pub struct AssigneeIn {
@@ -38,9 +38,6 @@ pub struct ImportIn {
     pub tasks: Vec<TaskIn>,
 }
 
-fn valid_axis(code: &str) -> bool {
-    matches!(code, "HARD" | "SOFT" | "IA" | "PILOTAGE" | "VIDEO")
-}
 
 /// F4 : import Asana rejouable (upsert sur external_key), rapport créé/mis à jour/ignoré/erreurs.
 pub async fn import_asana(

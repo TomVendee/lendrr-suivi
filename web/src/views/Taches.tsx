@@ -1,3 +1,4 @@
+/** Écran Taches : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, fmtDate, fmtH, initials, useUsers, type Task } from "../api";

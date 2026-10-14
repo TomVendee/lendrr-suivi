@@ -24,6 +24,7 @@ pub struct Me {
     pub role: String,
 }
 
+/// E-mail + mot de passe (D8) : ouvre une session 30 jours, cookie HttpOnly/Lax.
 pub async fn login(
     State(s): State<AppState>,
     Json(input): Json<LoginIn>,
@@ -42,17 +43,21 @@ pub async fn login(
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "invalid-credentials"})))
             .into_response();
     }
-    let sid: uuid::Uuid = sqlx::query_scalar("INSERT INTO sessions (user_id) VALUES ($1) RETURNING id")
-        .bind(id)
-        .fetch_one(&s.pool)
-        .await
-        .unwrap();
-    let cookie = format!("sid={sid}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000");
+    let sid: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO sessions (user_id, expires_at) VALUES ($1, now() + interval '30 days') RETURNING id",
+    )
+    .bind(id)
+    .fetch_one(&s.pool)
+    .await
+    .unwrap();
+    let secure = if s.secure_cookies { "; Secure" } else { "" };
+    let cookie = format!("sid={sid}; Path=/; HttpOnly{secure}; SameSite=Lax; Max-Age=2592000");
     let mut headers = HeaderMap::new();
     headers.insert(header::SET_COOKIE, HeaderValue::from_str(&cookie).unwrap());
     (StatusCode::OK, headers, Json(json!({"id": id, "name": name, "role": role}))).into_response()
 }
 
+/// Ferme la session (cookie + ligne en base).
 pub async fn logout(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     if let Some(sid) = super::session_cookie(&headers) {
         if let Ok(sid) = sid.parse::<uuid::Uuid>() {
@@ -63,13 +68,15 @@ pub async fn logout(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
         }
     }
     let mut h = HeaderMap::new();
-    h.insert(
-        header::SET_COOKIE,
-        HeaderValue::from_static("sid=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"),
+    let clear = format!(
+        "sid=; Path=/; HttpOnly{}; SameSite=Lax; Max-Age=0",
+        if s.secure_cookies { "; Secure" } else { "" }
     );
+    h.insert(header::SET_COOKIE, HeaderValue::from_str(&clear).unwrap());
     (StatusCode::OK, h, Json(json!({"ok": true}))).into_response()
 }
 
+/// Profil courant (cookie `sid` ou token `Bearer`).
 pub async fn me(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
@@ -97,16 +104,38 @@ pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl
     let mut raw = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut raw);
     let token = format!("ls_{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw));
-    let digest = {
-        use sha2::{Digest, Sha256};
-        format!("{:x}", Sha256::digest(token.as_bytes()))
+    let digest = super::sha256_hex(&token);
+    let id: uuid::Uuid = sqlx::query_scalar(
+        "INSERT INTO api_tokens (user_id, token_hash) VALUES ($1,$2) RETURNING id",
+    )
+    .bind(uid)
+    .bind(digest)
+    .fetch_one(&s.pool)
+    .await
+    .unwrap();
+    (StatusCode::CREATED, Json(json!({"id": id, "token": token}))).into_response()
+}
+
+/// Révoque un de ses tokens (D18). Le token cesse de fonctionner aussitôt.
+pub async fn revoke_token(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    axum::extract::Path(id): axum::extract::Path<uuid::Uuid>,
+) -> impl IntoResponse {
+    let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    let _ = sqlx::query("INSERT INTO api_tokens (user_id, token_hash) VALUES ($1,$2)")
+    let n = sqlx::query("UPDATE api_tokens SET revoked = TRUE WHERE id = $1 AND user_id = $2")
+        .bind(id)
         .bind(uid)
-        .bind(digest)
         .execute(&s.pool)
-        .await;
-    (StatusCode::CREATED, Json(json!({"token": token}))).into_response()
+        .await
+        .map(|r| r.rows_affected())
+        .unwrap_or(0);
+    if n == 0 {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
+    }
+    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
 }
 
 #[derive(Deserialize, Validate)]

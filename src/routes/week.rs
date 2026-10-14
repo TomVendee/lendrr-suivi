@@ -11,7 +11,7 @@ use serde_json::json;
 use super::{AppState, current_user};
 use crate::domain::{
     load::{Allocation, planned_load},
-    working_days::{project_week, week_bounds},
+    working_days::{project_week, today_paris, week_bounds},
 };
 
 #[derive(Deserialize)]
@@ -33,11 +33,6 @@ pub struct MyWeekTask {
     pub my_real_hours: f64,
 }
 
-fn today_paris() -> NaiveDate {
-    chrono::Utc::now()
-        .with_timezone(&chrono_tz::Europe::Paris)
-        .date_naive()
-}
 
 /// F3 : ma semaine — mes tâches qui chevauchent la semaine + charge + alertes perso.
 /// F5 s'appuie dessus pour la saisie (< 1 min : un POST par tâche).

@@ -56,6 +56,9 @@ pub fn cascade_shift(
                     if !threatened.contains(&succ) {
                         threatened.push(succ.clone());
                     }
+                    // Le jalon ne bouge pas, mais la cascade continue au-delà
+                    // (ses successeurs se comparent à sa date fixe).
+                    queue.push(succ);
                     continue;
                 }
                 let dur = working_days_between(s_start, s_end).max(1);

@@ -1,3 +1,4 @@
+/** Jetons et briques partagées (pastilles, cartes, icônes) issus des maquettes. */
 import React from "react";
 
 /** Jetons docs/maquettes/README.md */
@@ -129,15 +130,6 @@ export function StatusPill({ status }: { status: string }) {
       fontWeight: 600, display: "inline-flex", alignItems: "center",
       ...(STATUS_STYLE[status] ?? {}),
     }}>{fr}</span>
-  );
-}
-
-export function Kpi({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ ...card, display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 13, color: C.discret }}>{label}</span>
-      {children}
-    </div>
   );
 }
 
