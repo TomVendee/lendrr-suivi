@@ -153,3 +153,20 @@ pub async fn create_user(State(s): State<AppState>, headers: HeaderMap, Json(inp
         None => (StatusCode::CONFLICT, Json(json!({"error": "email-taken"}))).into_response(),
     }
 }
+
+/// Annuaire (connecté uniquement) : résout les noms pour les collaborateurs, la charge, la météo.
+pub async fn list_users(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    if current_user(&s.pool, &headers).await.is_err() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    }
+    let rows: Vec<(uuid::Uuid, String, String, String)> =
+        sqlx::query_as("SELECT id, name, email::text, role FROM users ORDER BY name")
+            .fetch_all(&s.pool)
+            .await
+            .unwrap_or_default();
+    let out: Vec<_> = rows
+        .iter()
+        .map(|(id, name, email, role)| json!({"id": id, "name": name, "email": email, "role": role}))
+        .collect();
+    (StatusCode::OK, Json(out)).into_response()
+}

@@ -2,7 +2,7 @@ use axum::{
     Router,
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Json},
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
 };
 use serde_json::json;
 use sqlx::PgPool;
@@ -39,7 +39,7 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/login", post(me::login))
         .route("/api/logout", post(me::logout))
         .route("/api/tokens", post(me::create_token))
-        .route("/api/users", post(me::create_user))
+        .route("/api/users", post(me::create_user).get(me::list_users))
         .route("/setup", post(setup::setup))
         .route("/api/tasks", get(tasks::list).post(tasks::create))
         .route("/api/tasks/{id}", get(tasks::get).put(tasks::update))
@@ -51,9 +51,11 @@ pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
         .route("/api/import", post(import::import_asana))
         .route("/api/load", get(stats::load))
         .route("/api/alerts", get(stats::alerts))
+        .route("/api/graphs", get(stats::graphs))
         .route("/api/gantt", get(views::gantt))
         .route("/api/meteo", get(views::meteo))
         .route("/api/revisions", get(revisions::list))
+        .route("/api/revisions/{id}", put(revisions::update_payload))
         .route("/api/revisions/{id}/validate", post(revisions::decide))
         .route("/api/baselines", post(report::take_baseline))
         .route("/api/synthesis", get(report::synthesis))

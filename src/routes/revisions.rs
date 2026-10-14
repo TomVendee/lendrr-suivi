@@ -36,7 +36,6 @@ pub async fn list(State(s): State<AppState>, headers: HeaderMap) -> impl IntoRes
 pub struct DecideIn {
     pub approve: bool,
 }
-
 /// Valider (publie) ou rejeter. Création membre → la tâche naît ; modification →
 /// l'ancienne version reste en vigueur jusqu'ici. Refus si pas exactement 1 lead.
 pub async fn decide(
@@ -75,8 +74,43 @@ pub async fn decide(
     }
 }
 
-pub async fn apply_payload(
-    pool: &sqlx::PgPool,
+/// Retouche une révision en attente avant de la valider (pilote).
+/// Le payload suit le même schéma que la création (titre, axis_code, dates,
+/// done_criteria, milestone, assignments[]) ; refusé si pas exactement 1 lead.
+pub async fn update_payload(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    Json(payload): Json<serde_json::Value>,
+) -> impl IntoResponse {
+    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    if role != "pilot" {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    }
+    let leads = payload
+        .get("assignments")
+        .and_then(|v| v.as_array())
+        .map(|a| a.iter().filter(|x| x.get("role").and_then(|v| v.as_str()) == Some("lead")).count())
+        .unwrap_or(0);
+    if !crate::domain::validation::can_validate(leads) {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "need-exactly-one-lead"}))).into_response();
+    }
+    let n = sqlx::query("UPDATE task_revisions SET payload=$1 WHERE id=$2 AND status='pending'")
+        .bind(payload)
+        .bind(id)
+        .execute(&s.pool)
+        .await
+        .map(|r| r.rows_affected())
+        .unwrap_or(0);
+    if n == 0 {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
+    }
+    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+}
+
+pub async fn apply_payload(    pool: &sqlx::PgPool,
     task_id: Option<uuid::Uuid>,
     p: &serde_json::Value,
 ) -> Result<uuid::Uuid, &'static str> {

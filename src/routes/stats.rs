@@ -279,3 +279,86 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
     out.sort_by_key(|a| std::cmp::Reverse(a.get("severity").and_then(|v| v.as_u64()).unwrap_or(0)));
     out
 }
+
+/// Écran Graphes : cumul prévu/déclaré, barres par semaine, par personne, avancement par axe.
+pub async fn graphs(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    if current_user(&s.pool, &headers).await.is_err() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    }
+    let cur = project_week(today_paris());
+    let from = 1;
+    let to = cur + 6;
+
+    let tasks: Vec<(uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String)> =
+        sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status FROM tasks")
+            .fetch_all(&s.pool)
+            .await
+            .unwrap_or_default();
+    let assigns: Vec<(uuid::Uuid, uuid::Uuid, f64, chrono::NaiveDate, chrono::NaiveDate)> = sqlx::query_as(
+        "SELECT a.user_id, a.task_id, a.planned_hours, t.start_date, t.end_date
+         FROM assignments a JOIN tasks t ON t.id = a.task_id",
+    )
+    .fetch_all(&s.pool)
+    .await
+    .unwrap_or_default();
+    let users: Vec<(uuid::Uuid, String)> =
+        sqlx::query_as("SELECT id, name FROM users ORDER BY name")
+            .fetch_all(&s.pool)
+            .await
+            .unwrap_or_default();
+
+    let mut weeks = vec![];
+    let (mut cum_p, mut cum_r) = (0.0, 0.0);
+    for w in from..=to {
+        let p: f64 = assigns
+            .iter()
+            .map(|(_, _, h, s, e)| {
+                let tot = crate::domain::working_days::working_days_between(*s, *e);
+                if tot == 0 {
+                    return 0.0;
+                }
+                let (wmon, wsun) = crate::domain::working_days::week_bounds(w);
+                let a = (*s).max(wmon);
+                let b = (*e).min(wsun);
+                if b < a {
+                    return 0.0;
+                }
+                h * (crate::domain::working_days::working_days_between(a, b) as f64) / (tot as f64)
+            })
+            .sum();
+        let r: f64 = sqlx::query_scalar("SELECT COALESCE(SUM(hours),0) FROM time_entries WHERE week=$1")
+            .bind(w)
+            .fetch_one(&s.pool)
+            .await
+            .unwrap_or(0.0);
+        cum_p += p;
+        cum_r += r;
+        weeks.push(json!({"week": w, "planned": p, "real": r, "cum_planned": cum_p, "cum_real": cum_r}));
+    }
+    let mut persons = vec![];
+    for (uid, name) in &users {
+        let r: f64 = sqlx::query_scalar("SELECT COALESCE(SUM(hours),0) FROM time_entries WHERE user_id=$1")
+            .bind(uid)
+            .fetch_one(&s.pool)
+            .await
+            .unwrap_or(0.0);
+        persons.push(json!({"user_id": uid, "name": name, "real": r}));
+    }
+    let axes = ["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"];
+    let by_axis: Vec<_> = axes
+        .iter()
+        .map(|a| {
+            let mine: Vec<_> = tasks.iter().filter(|(_, _, x, _, _, _)| x == a).collect();
+            let done = mine.iter().filter(|(_, _, _, _, _, st)| st == "done").count();
+            json!({"axis": a, "done": done, "total": mine.len()})
+        })
+        .collect();
+    let done_total = tasks.iter().filter(|(_, _, _, _, _, st)| st == "done").count();
+    (
+        StatusCode::OK,
+        Json(json!({"from": from, "to": to, "current": cur, "weeks": weeks,
+            "persons": persons, "axes": by_axis,
+            "tasks_done": done_total, "tasks_total": tasks.len()})),
+    )
+        .into_response()
+}

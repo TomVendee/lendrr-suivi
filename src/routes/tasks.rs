@@ -30,6 +30,13 @@ pub struct TaskOut {
     pub done_criteria: String,
     pub milestone: bool,
     pub assignments: Vec<AssignmentOut>,
+    pub depends_on: Vec<DepOut>,
+}
+
+#[derive(Serialize)]
+pub struct DepOut {
+    pub id: uuid::Uuid,
+    pub title: String,
 }
 
 #[derive(Deserialize)]
@@ -137,6 +144,13 @@ async fn task_out(
             .fetch_all(pool)
             .await
             .unwrap_or_default();
+    let deps: Vec<(uuid::Uuid, String)> = sqlx::query_as(
+        "SELECT t.id, t.title FROM dependencies d JOIN tasks t ON t.id = d.pred_id WHERE d.succ_id = $1",
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
     TaskOut {
         id,
         title,
@@ -150,6 +164,7 @@ async fn task_out(
             .into_iter()
             .map(|(user_id, role, planned_hours)| AssignmentOut { user_id, role, planned_hours })
             .collect(),
+        depends_on: deps.into_iter().map(|(id, title)| DepOut { id, title }).collect(),
     }
 }
 

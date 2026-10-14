@@ -27,6 +27,7 @@ pub struct MyWeekTask {
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
     pub status: String,
+    pub done_criteria: String,
     pub my_role: String,
     pub my_planned_hours: f64,
     pub my_real_hours: f64,
@@ -51,8 +52,8 @@ pub async fn my_week(
     let week = q.week.unwrap_or_else(|| project_week(today_paris()));
     let (wmon, wsun) = week_bounds(week);
 
-    let rows: Vec<(uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, f64)> = sqlx::query_as(
-        "SELECT t.id, t.title, t.axis_code, t.start_date, t.end_date, t.status, a.role, a.planned_hours
+    let rows: Vec<(uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, String, f64)> = sqlx::query_as(
+        "SELECT t.id, t.title, t.axis_code, t.start_date, t.end_date, t.status, t.done_criteria, a.role, a.planned_hours
          FROM tasks t JOIN assignments a ON a.task_id = t.id
          WHERE a.user_id = $1 AND t.start_date <= $2 AND t.end_date >= $3
          ORDER BY t.start_date",
@@ -66,7 +67,7 @@ pub async fn my_week(
 
     let mut tasks = vec![];
     let mut allocs = vec![];
-    for (id, title, axis, sd, ed, st, role, hours) in &rows {
+    for (id, title, axis, sd, ed, st, crit, role, hours) in &rows {
         let real: f64 = sqlx::query_scalar(
             "SELECT COALESCE(SUM(hours),0) FROM time_entries WHERE task_id=$1 AND user_id=$2 AND week=$3",
         )
@@ -84,6 +85,7 @@ pub async fn my_week(
             start_date: *sd,
             end_date: *ed,
             status: st.clone(),
+            done_criteria: crit.clone(),
             my_role: role.clone(),
             my_planned_hours: *hours,
             my_real_hours: real,
