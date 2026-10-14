@@ -62,7 +62,8 @@ export function Gantt() {
 
   const rows: React.ReactNode[] = [];
   const places: Record<string, { x0: number; x1: number; y: number; crit: boolean; title: string }> = {};
-  let y = 0;
+  // L'overlay des liens couvre aussi l'en-tête (52 px) : on part de 52.
+  let y = 52;
   const ROW_AXE = 41, ROW_T = 31;
 
   const taskRow = (t: GTask) => {
