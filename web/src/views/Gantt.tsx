@@ -1,7 +1,7 @@
 /** Écran Gantt : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Checkbox, SegmentedControl } from "@mantine/core";import { notifications } from "@mantine/notifications";
+import { Checkbox, SegmentedControl, Skeleton} from "@mantine/core";import { notifications } from "@mantine/notifications";
 import { api, fmtDate } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, box, ink, line, muted, surf, track } from "../theme";
 
@@ -24,7 +24,7 @@ export function Gantt({ role }: { role: string }) {
   const [moved, setMoved] = useState<string[]>([]);
   const plotRef = useRef<HTMLDivElement>(null);
   const q = useQuery({ queryKey: ["gantt"], queryFn: () => api<GanttData>("/api/gantt") });
-  if (!q.data) return <p>Chargement…</p>;
+  if (!q.data) return <Skeleton height={320} radius="md" />;
   const { today, tasks, deps } = q.data;
 
   const dates = tasks.flatMap((t) => [t.start, t.end]);

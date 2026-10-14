@@ -1,7 +1,7 @@
 /** Écran Charge : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SegmentedControl } from "@mantine/core";
+import { SegmentedControl, Skeleton} from "@mantine/core";
 import { api, fmtH, fmtN } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, kpi, box, ink, line, muted, surf } from "../theme";
 
@@ -23,7 +23,7 @@ export function Charge() {
   const alerts = useQuery({
     queryKey: ["alerts"], queryFn: () => api<{ alerts: { kind: string }[] }>("/api/alerts"),
   });
-  if (!q.data) return <p>Chargement…</p>;
+  if (!q.data) return <Skeleton height={320} radius="md" />;
   const rows = q.data.rows;
   const weeks = rows[0]?.weeks.map((w) => w.week) ?? [];
   // Semaine en cours ≈ première semaine dont une case a du prévu sans réel complet — repli : milieu.

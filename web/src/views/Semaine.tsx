@@ -1,7 +1,7 @@
 /** Écran Semaine : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, NumberInput, Select } from "@mantine/core";
+import { Button, NumberInput, Select, Skeleton} from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { api, fmtDate, fmtH, fmtN, type Me } from "../api";
 import { TAG, alertDetail, type Alert } from "./Alertes";
@@ -53,7 +53,7 @@ export function Semaine({ me }: { me: Me }) {
     enabled: !!q.data,
   });
 
-  if (!q.data) return <p>Chargement…</p>;
+  if (!q.data) return (<div style={{ display: "grid", gap: 12 }}><Skeleton height={120} radius="md" /><Skeleton height={220} radius="md" /><Skeleton height={220} radius="md" /></div>);
   const d = q.data;
   const myAlerts = (alerts.data?.alerts ?? []).slice(0, 3);
 
@@ -179,6 +179,14 @@ export function Semaine({ me }: { me: Me }) {
           {!mobile && <span style={{ fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h prévues</span>}
         </div>
         {mobile && <span style={{ paddingBottom: 12, fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h</span>}
+        {mobile && (
+          <Select
+            label="Statut"
+            value={t.status}
+            onChange={(v) => v && setStatus(t.id, v)}
+            data={STATUS_OPTIONS.map(([value, label]) => ({ value, label }))}
+          />
+        )}
         {!mobile && (
           <Select
             id={`s-${t.id}`}

@@ -1,5 +1,6 @@
 /** Écran Meteo : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
+import { Button, Skeleton } from "@mantine/core";
 import { api, fmtDate, fmtH, useUsers, type Task } from "../api";
 import { TAG as ALERT_TAG } from "./Alertes";
 import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi, box, line, muted, surf, track } from "../theme";
@@ -60,7 +61,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
     queryFn: () => api<{ rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }>("/api/load"),
   });
 
-  if (!meteo.data) return <p>Chargement…</p>;
+  if (!meteo.data) return (<div style={{ display: "grid", gap: 16 }}><Skeleton height={120} radius="md" /><Skeleton height={300} radius="md" /></div>);
   const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? "";
   const milestones = (gantt.data?.tasks ?? [])
     .filter((t) => t.milestone && t.status !== "done")
@@ -100,9 +101,9 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
               <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent }} />
               {soutenance.title} dans <strong style={{ fontFamily: F_MONO }}>{daysUntil(soutenance.start)} jours</strong>
             </span>
-            <button style={{ ...btnPrimary, height: 44, padding: "0 18px", fontSize: 14 }} onClick={goSynthese}>
+            <Button onClick={goSynthese}>
               Synthèse S{curWeek ? String(curWeek.week).padStart(2, "0") : ""}
-            </button>
+            </Button>
           </>
         ) : undefined}
       />

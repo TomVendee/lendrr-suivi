@@ -277,6 +277,69 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
     out
 }
 
+/// Capacités et absences par personne et par semaine (cahier : 4 h par défaut,
+/// 0 h en absence). Lecture : connecté. Écriture : pilote (upsert, 0 h = absence).
+pub async fn capacities(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    if current_user(&s.pool, &headers).await.is_err() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    }
+    let users: Vec<(uuid::Uuid, String, f64)> =
+        sqlx::query_as("SELECT id, name, default_capacity_hours FROM users ORDER BY name")
+            .fetch_all(&s.pool)
+            .await
+            .unwrap_or_default();
+    let overs: Vec<(uuid::Uuid, i32, f64)> =
+        sqlx::query_as("SELECT user_id, week, hours FROM capacity_overrides")
+            .fetch_all(&s.pool)
+            .await
+            .unwrap_or_default();
+    let out: Vec<_> = users
+        .iter()
+        .map(|(id, name, def)| {
+            let o: Vec<_> = overs
+                .iter()
+                .filter(|(u, _, _)| u == id)
+                .map(|(_, w, h)| json!({"week": w, "hours": h}))
+                .collect();
+            json!({"user_id": id, "name": name, "default": def, "overrides": o})
+        })
+        .collect();
+    (StatusCode::OK, Json(out)).into_response()
+}
+
+#[derive(Deserialize)]
+pub struct CapacityIn {
+    pub user_id: uuid::Uuid,
+    pub week: i32,
+    pub hours: f64,
+}
+
+pub async fn set_capacity(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(input): Json<CapacityIn>,
+) -> impl IntoResponse {
+    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    if role != "pilot" {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    }
+    if !(0.0..=80.0).contains(&input.hours) || input.week < 1 {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-capacity"}))).into_response();
+    }
+    let _ = sqlx::query(
+        "INSERT INTO capacity_overrides (user_id, week, hours) VALUES ($1,$2,$3)
+         ON CONFLICT (user_id, week) DO UPDATE SET hours = EXCLUDED.hours",
+    )
+    .bind(input.user_id)
+    .bind(input.week)
+    .bind(input.hours)
+    .execute(&s.pool)
+    .await;
+    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+}
+
 /// Écran Graphes : cumul prévu/déclaré, barres par semaine, par personne, avancement par axe.
 pub async fn graphs(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     if current_user(&s.pool, &headers).await.is_err() {

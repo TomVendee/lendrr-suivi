@@ -1,7 +1,7 @@
 /** Écran Taches : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Modal, NumberInput, Select } from "@mantine/core";
+import { Button, Checkbox, Modal, NumberInput, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { api, fmtDate, fmtH, initials, useUsers, type Task } from "../api";
 import { AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
@@ -27,13 +27,23 @@ export function Taches({ role }: { role: string }) {
   const qc = useQueryClient();
   const [axis, setAxis] = useState("");
   const [status, setStatus] = useState("");
+  const [q, setQ] = useState("");
   const [selRev, setSelRev] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [draft, setDraft] = useState<Revision["payload"] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const tasks = useQuery({
-    queryKey: ["tasks", axis, status],
-    queryFn: () => api<Task[]>(`/api/tasks${axis || status ? `?${[axis && `axis=${axis}`, status && `status=${status}`].filter(Boolean).join("&")}` : ""}`),
+    queryKey: ["tasks", axis, status, q],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (axis) p.set("axis", axis);
+      if (status) p.set("status", status);
+      if (q.trim()) p.set("q", q.trim());
+      const s = p.toString();
+      return api<Task[]>(`/api/tasks${s ? `?${s}` : ""}`);
+    },
   });
   const revs = useQuery({
     queryKey: ["revisions"],
@@ -232,7 +242,9 @@ export function Taches({ role }: { role: string }) {
           </section>
         ) : (
           <section style={{ flex: "2 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <TextInput placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)}
+                style={{ flex: "1 1 180px" }} />
               <Select
                 value={axis} onChange={(v) => setAxis(v ?? "")} clearable placeholder="Tous les axes"
                 data={["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"]} w={170}
@@ -246,9 +258,11 @@ export function Taches({ role }: { role: string }) {
                   { value: "done", label: "Terminée" },
                 ]} w={170}
               />
+              <Button onClick={() => setCreating(true)}>+ Nouvelle tâche</Button>
             </div>
             {(tasks.data ?? []).map((t) => (
-              <div key={t.id} style={card}>
+              <div key={t.id} onClick={() => setDetailId(t.id)}
+                style={{ ...card, cursor: "pointer" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
                   <AxisChip code={t.axis_code} />
                   {t.milestone && <span style={{ fontSize: 12, fontWeight: 600 }}>◆ Jalon</span>}
@@ -263,9 +277,163 @@ export function Taches({ role }: { role: string }) {
                 )}
               </div>
             ))}
+            {tasks.data?.length === 0 && <p style={{ color: muted }}>Aucune tâche ne correspond.</p>}
           </section>
         )}
       </div>
+      <NewTaskModal opened={creating} onClose={() => setCreating(false)} role={role} />
+      {detailId && <TaskDetail id={detailId} onClose={() => setDetailId(null)} role={role} nameOf={nameOf} />}
     </>
+  );
+}
+
+/** Création : publiée directement côté pilote, en attente côté membre (F11). */
+function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () => void; role: string }) {
+  const qc = useQueryClient();
+  const users = useUsers();
+  const [f, setF] = useState({ title: "", axis: "HARD", start: "", end: "", criteria: "", milestone: false, lead: "", hours: "4" });
+  const set = (k: string) => (v: string | boolean) => setF({ ...f, [k]: v });
+  const people = (users.data ?? []).map((u) => ({ value: u.id, label: u.name }));
+
+  const submit = async () => {
+    if (!f.title.trim() || !f.start || !f.end || !f.lead) {
+      notifications.show({ message: "Titre, dates et pilote requis.", color: "warn" });
+      return;
+    }
+    try {
+      const r = await api<{ id?: string; status?: string }>("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title: f.title.trim(), axis_code: f.axis, start_date: f.start, end_date: f.end,
+          done_criteria: f.criteria, milestone: f.milestone,
+          assignments: [{ user_id: f.lead, role: "lead", planned_hours: parseFloat(f.hours.replace(",", ".")) || 0 }],
+        }),
+      });
+      notifications.show({
+        message: r.status === "pending-validation" ? "Proposée — en attente de validation." : "Tâche créée.",
+        color: "ok",
+      });
+      onClose();
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["revisions"] });
+    } catch (e) {
+      notifications.show({ message: `Échec : ${String(e)}`, color: "crit" });
+    }
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Nouvelle tâche" size="lg" centered>
+      <div style={{ display: "grid", gap: 12 }}>
+        <TextInput label="Titre" value={f.title} onChange={(e) => set("title")(e.target.value)} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Select label="Axe" value={f.axis} onChange={(v) => v && set("axis")(v)}
+            data={["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"]} />
+          <Select label="Pilote" value={f.lead} onChange={(v) => v && set("lead")(v)}
+            data={people} searchable placeholder="Qui pilote ?" />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <TextInput label="Début" type="date" value={f.start} onChange={(e) => set("start")(e.target.value)} />
+          <TextInput label="Fin" type="date" value={f.end} onChange={(e) => set("end")(e.target.value)} />
+          <NumberInput label="Heures pilote" min={0} step={0.5} decimalSeparator=","
+            value={f.hours} onChange={(v) => set("hours")(String(v ?? ""))} />
+        </div>
+        <Textarea label="Terminé quand" value={f.criteria} onChange={(e) => set("criteria")(e.target.value)} rows={2} />
+        <Checkbox label="Jalon (date unique, ne bouge jamais seul)" checked={f.milestone}
+          onChange={(e) => set("milestone")(e.currentTarget.checked)} />
+        {role !== "pilot" && <p style={{ color: muted, fontSize: 13 }}>En tant que membre, ta tâche part en validation.</p>}
+        <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+          <Button variant="default" onClick={onClose}>Annuler</Button>
+          <Button onClick={submit}>Créer</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/** Fiche : dépendances (pilote), fil de discussion. */
+function TaskDetail({ id, onClose, role, nameOf }: {
+  id: string; onClose: () => void; role: string; nameOf: (id: string) => string;
+}) {
+  const qc = useQueryClient();
+  const [comment, setComment] = useState("");
+  const [pred, setPred] = useState<string | null>(null);
+  const task = useQuery({ queryKey: ["task", id], queryFn: () => api<Task>(`/api/tasks/${id}`) });
+  const comments = useQuery({
+    queryKey: ["comments", id],
+    queryFn: () => api<{ author: string; body: string; at: string }[]>(`/api/tasks/${id}/comments`),
+  });
+  const all = useQuery({ queryKey: ["tasks-all"], queryFn: () => api<Task[]>("/api/tasks") });
+
+  const post = async () => {
+    if (!comment.trim()) return;
+    await api(`/api/tasks/${id}/comments`, { method: "POST", body: JSON.stringify({ body: comment.trim() }) });
+    setComment("");
+    qc.invalidateQueries({ queryKey: ["comments", id] });
+  };
+  const addDep = async () => {
+    if (!pred) return;
+    try {
+      await api("/api/dependencies", { method: "POST", body: JSON.stringify({ pred_id: pred, succ_id: id }) });
+      notifications.show({ message: "Dépendance ajoutée.", color: "ok" });
+      qc.invalidateQueries({ queryKey: ["task", id] });
+    } catch {
+      notifications.show({ message: "Refusée (cycle ou doublon).", color: "crit" });
+    }
+  };
+  const delDep = async (pred_id: string) => {
+    await api("/api/dependencies", { method: "DELETE", body: JSON.stringify({ pred_id, succ_id: id }) });
+    qc.invalidateQueries({ queryKey: ["task", id] });
+  };
+
+  const t = task.data;
+  return (
+    <Modal opened onClose={onClose} title={t?.title ?? "Tâche"} size="lg" centered>
+      {!t ? <p>Chargement…</p> : (
+        <div style={{ display: "grid", gap: 14 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <AxisChip code={t.axis_code} />
+            <span style={{ fontSize: 13, color: muted }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)}</span>
+          </div>
+          {t.done_criteria && <p style={{ margin: 0, fontSize: 14 }}><strong>Terminé quand : </strong>{t.done_criteria}</p>}
+          <div>
+            <strong style={{ fontSize: 14 }}>Dépend de</strong>
+            {(t.depends_on ?? []).map((d) => (
+              <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 0" }}>
+                <span style={{ flex: 1, fontSize: 14 }}>{d.title}</span>
+                {role === "pilot" && (
+                  <Button variant="subtle" color="crit" size="xs" onClick={() => delDep(d.id)}>Retirer</Button>
+                )}
+              </div>
+            ))}
+            {(t.depends_on ?? []).length === 0 && <p style={{ color: muted, fontSize: 13 }}>Aucune dépendance.</p>}
+            {role === "pilot" && (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <Select placeholder="Tâche précédente…" value={pred} onChange={setPred} searchable style={{ flex: 1 }}
+                  data={(all.data ?? []).filter((x) => x.id !== id).map((x) => ({ value: x.id, label: x.title }))} />
+                <Button variant="default" onClick={addDep}>Lier</Button>
+              </div>
+            )}
+          </div>
+          <div>
+            <strong style={{ fontSize: 14 }}>Discussion ({(comments.data ?? []).length})</strong>
+            {(comments.data ?? []).map((c, i) => (
+              <div key={i} style={{ padding: "8px 0", borderTop: `1px solid ${line}` }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>{c.author}</span>
+                <span style={{ fontSize: 12, color: muted }}> · {new Date(c.at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                <p style={{ margin: "2px 0 0", fontSize: 14 }}>{c.body}</p>
+              </div>
+            ))}
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <Textarea placeholder="Écrire un commentaire…" value={comment}
+                onChange={(e) => setComment(e.target.value)} rows={1} style={{ flex: 1 }} />
+              <Button onClick={post}>Envoyer</Button>
+            </div>
+          </div>
+          <p style={{ color: muted, fontSize: 13 }}>
+            {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(" · ")}
+          </p>
+        </div>
+      )}
+    </Modal>
   );
 }

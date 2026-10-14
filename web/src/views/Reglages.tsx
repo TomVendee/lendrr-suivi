@@ -1,7 +1,7 @@
 /** Écran Reglages : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, PasswordInput, Select, TextInput, Textarea } from "@mantine/core";
+import { Button, NumberInput, PasswordInput, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { api, type User } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, line, muted } from "../theme";
@@ -94,6 +94,8 @@ export function Reglages() {
         </div>
       </section>
 
+      <Capacites users={users.data ?? []} />
+
       <section aria-labelledby="ia-titre" style={{ ...card, padding: "8px 24px 16px" }}>
         <h2 id="ia-titre" style={{ margin: "14px 0 4px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Accès IA</h2>
         <p style={{ color: muted, fontSize: 14 }}>Token personnel pour Claude / Cowork via <code style={{ fontFamily: F_MONO }}>POST /mcp</code>. Affiché une seule fois.</p>
@@ -105,5 +107,48 @@ export function Reglages() {
 
       {msg && <p role="status" style={{ ...card, background: C.warnFond, wordBreak: "break-all" }}>{msg}</p>}
     </>
+  );
+}
+
+/** Capacités et absences : 4 h par défaut, 0 h = absence (compte dans la charge). */
+function Capacites({ users }: { users: User[] }) {
+  const qc = useQueryClient();
+  const [who, setWho] = useState<string | null>(null);
+  const [week, setWeek] = useState<number | "">(8);
+  const [hours, setHours] = useState<number | "">(4);
+  const caps = useQuery({
+    queryKey: ["capacities"],
+    queryFn: () => api<{ user_id: string; name: string; default: number; overrides: { week: number; hours: number }[] }[]>("/api/capacities"),
+  });
+  const save = async () => {
+    if (!who || week === "" || hours === "") {
+      notifications.show({ message: "Personne, semaine et heures requis.", color: "warn" });
+      return;
+    }
+    await api("/api/capacities", { method: "PUT", body: JSON.stringify({ user_id: who, week, hours }) });
+    notifications.show({ message: "Capacité enregistrée.", color: "ok" });
+    qc.invalidateQueries({ queryKey: ["capacities"] });
+    qc.invalidateQueries({ queryKey: ["load"] });
+  };
+  return (
+    <section aria-labelledby="capa-titre" style={{ ...card, padding: "8px 24px 16px" }}>
+      <h2 id="capa-titre" style={{ margin: "14px 0 4px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Capacités et absences</h2>
+      {(caps.data ?? []).filter((u) => u.overrides.length > 0).map((u) => (
+        <div key={u.user_id} style={{ fontSize: 14, padding: "4px 0" }}>
+          <strong>{u.name}</strong> (défaut {u.default} h) :{" "}
+          {u.overrides.map((o) => `S${o.week} = ${o.hours} h`).join(" · ")}
+        </div>
+      ))}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 12 }}>
+        <Select label="Personne" value={who} onChange={setWho} searchable
+          data={users.map((u) => ({ value: u.id, label: u.name }))} />
+        <NumberInput label="Semaine" min={1} max={52} value={week} onChange={(v) => setWeek(typeof v === "number" ? v : "")} />
+        <NumberInput label="Heures (0 = absence)" min={0} max={80} step={0.5} decimalSeparator=","
+          value={hours} onChange={(v) => setHours(typeof v === "number" ? v : "")} />
+      </div>
+      <div style={{ paddingTop: 12 }}>
+        <Button variant="default" onClick={save}>Enregistrer</Button>
+      </div>
+    </section>
   );
 }

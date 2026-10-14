@@ -43,6 +43,8 @@ pub struct DepOut {
 pub struct TaskFilters {
     pub axis: Option<String>,
     pub status: Option<String>,
+    /// Recherche plein texte sur le titre (ILIKE %..%).
+    pub q: Option<String>,
 }
 
 #[derive(Deserialize, Validate, Clone)]
@@ -68,6 +70,62 @@ pub struct TaskIn {
 #[derive(Deserialize)]
 pub struct StatusIn {
     pub status: String,
+}
+
+#[derive(Deserialize)]
+pub struct CommentIn {
+    pub body: String,
+}
+
+/// Fil de discussion d'une tâche (cahier : les membres commentent).
+/// Lecture et écriture : connecté. 2000 caractères max.
+pub async fn comments(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+) -> impl IntoResponse {
+    if current_user(&s.pool, &headers).await.is_err() {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    }
+    let rows: Vec<(String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT u.name, c.body, c.created_at FROM task_comments c JOIN users u ON u.id = c.user_id
+         WHERE c.task_id = $1 ORDER BY c.created_at",
+    )
+    .bind(id)
+    .fetch_all(&s.pool)
+    .await
+    .unwrap_or_default();
+    let out: Vec<_> = rows
+        .iter()
+        .map(|(who, body, at)| json!({"author": who, "body": body, "at": at}))
+        .collect();
+    (StatusCode::OK, Json(out)).into_response()
+}
+
+pub async fn add_comment(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<uuid::Uuid>,
+    Json(input): Json<CommentIn>,
+) -> impl IntoResponse {
+    let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    let body = input.body.trim().to_string();
+    if body.is_empty() || body.len() > 2000 {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-comment"}))).into_response();
+    }
+    let ok = sqlx::query("INSERT INTO task_comments (task_id, user_id, body) VALUES ($1,$2,$3)")
+        .bind(id)
+        .bind(uid)
+        .bind(body)
+        .execute(&s.pool)
+        .await
+        .is_ok();
+    if !ok {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "bad-task"}))).into_response();
+    }
+    (StatusCode::CREATED, Json(json!({"ok": true}))).into_response()
 }
 
 
@@ -107,19 +165,32 @@ pub async fn list(
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     }
     let mut q = "SELECT id, title, axis_code, start_date, end_date, status, done_criteria, milestone FROM tasks WHERE 1=1".to_string();
+    // Paramètres numérotés $1.. construits dans l'ordre (axis, status, q).
+    let mut n = 0;
     if f.axis.is_some() {
-        q += " AND axis_code = $1";
+        n += 1;
+        q += &format!(" AND axis_code = ${n}");
     }
     if f.status.is_some() {
-        q += if f.axis.is_some() { " AND status = $2" } else { " AND status = $1" };
+        n += 1;
+        q += &format!(" AND status = ${n}");
     }
-    q += " ORDER BY start_date";
+    if f.q.as_ref().is_some_and(|s| !s.trim().is_empty()) {
+        n += 1;
+        q += &format!(" AND title ILIKE ${n}");
+    }
+    q += " ORDER BY start_date LIMIT 500";
     let mut query = sqlx::query_as::<_, (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool)>(&q);
     if let Some(a) = f.axis {
         query = query.bind(a);
     }
     if let Some(st) = f.status {
         query = query.bind(st);
+    }
+    if let Some(s) = f.q {
+        if !s.trim().is_empty() {
+            query = query.bind(format!("%{}%", s.trim()));
+        }
     }
     let rows = query.fetch_all(&s.pool).await.unwrap_or_default();
     let mut out = vec![];
