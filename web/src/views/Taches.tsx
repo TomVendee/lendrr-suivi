@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, Modal, NumberInput, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { api, fmtDate, fmtH, initials, useUsers, type Task } from "../api";
+import { api, fmtDate, fmtH, initials, useSettings, useUsers, type Task } from "../api";
 import { AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
 
 interface Revision {
@@ -33,6 +33,11 @@ export function Taches({ role }: { role: string }) {
   const [draft, setDraft] = useState<Revision["payload"] | null>(null);
   const [creating, setCreating] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | "">("");
+  const settings = useSettings();
+  // File de validation : pilote, validateur ou suppléant (réglages F11).
+  const canDecide = settings.data?.can_decide ?? false;
+  const canCreate = role === "pilot" || (settings.data?.members_can_propose ?? true);
 
   const tasks = useQuery({
     queryKey: ["tasks", axis, status, q],
@@ -48,7 +53,7 @@ export function Taches({ role }: { role: string }) {
   const revs = useQuery({
     queryKey: ["revisions"],
     queryFn: () => api<{ revisions: Revision[] }>("/api/revisions"),
-    enabled: role === "pilot",
+    enabled: canDecide,
     retry: false,
   });
   const users = useUsers();
@@ -113,8 +118,8 @@ export function Taches({ role }: { role: string }) {
   return (
     <>
       <PageHead
-        title={role === "pilot" ? "Tâches à valider" : "Tâches"}
-        sub={role === "pilot" ? "Une tâche proposée ou modifiée reste invisible pour ses collaborateurs tant que tu ne l'as pas validée." : undefined}
+        title={canDecide ? "Tâches à valider" : "Tâches"}
+        sub={canDecide ? "Une tâche proposée ou modifiée reste invisible pour ses collaborateurs tant que tu ne l'as pas validée." : undefined}
       />
       {msg && (
         <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: C.okFond, color: "#1C4F31", fontSize: 14, fontWeight: 500 }}>
@@ -122,7 +127,7 @@ export function Taches({ role }: { role: string }) {
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
-        {role === "pilot" && (
+        {canDecide && (
           <section aria-labelledby="file-titre" style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             <h2 id="file-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>En attente · {list.length}</h2>
             {list.map((r) => {
@@ -152,7 +157,7 @@ export function Taches({ role }: { role: string }) {
           </section>
         )}
 
-        {role === "pilot" && shown && draft ? (
+        {canDecide && shown && draft ? (
           <section aria-labelledby="detail-titre" style={{ ...card, flex: "2 1 520px", minWidth: 0, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
               <AxisChip code={draft.axis_code} />
@@ -214,6 +219,17 @@ export function Taches({ role }: { role: string }) {
                   </button>
                 ))}
               </div>
+              {settings.data?.hours_mode === "equal_split" && draft.assignments.length > 0 && (
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap" }}>
+                  <NumberInput label="Total à répartir à parts égales" min={0} step={0.5} decimalSeparator="," suffix=" h"
+                    value={total} onChange={(v) => setTotal(typeof v === "number" ? v : "")} w={240} />
+                  <Button variant="default" disabled={total === ""} onClick={() => {
+                    // Arrondi à 0,1 h (maquette : 3,5 h pour 3 = 1,2 h chacune), modifiable ensuite.
+                    const each = Math.round((Number(total) / draft.assignments.length) * 10) / 10;
+                    setDraft({ ...draft, assignments: draft.assignments.map((a) => ({ ...a, planned_hours: each })) });
+                  }}>Répartir</Button>
+                </div>
+              )}
               {nLeads !== 1 && (
                 <span style={{ fontSize: 13, color: "#8F1C13", fontWeight: 500 }}>
                   {nLeads === 0 ? "Il faut un pilote pour valider la tâche." : "Une seule personne peut être pilote : passe les autres en appui."}
@@ -258,7 +274,7 @@ export function Taches({ role }: { role: string }) {
                   { value: "done", label: "Terminée" },
                 ]} w={170}
               />
-              <Button onClick={() => setCreating(true)}>+ Nouvelle tâche</Button>
+              {canCreate && <Button onClick={() => setCreating(true)}>+ Nouvelle tâche</Button>}
             </div>
             {(tasks.data ?? []).map((t) => (
               <div key={t.id} onClick={() => setDetailId(t.id)}
@@ -287,13 +303,14 @@ export function Taches({ role }: { role: string }) {
   );
 }
 
-/** Création : publiée directement côté pilote, en attente côté membre (F11). */
+/** Création : publiée directement côté pilote ; côté membre, selon les réglages F11. */
 function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () => void; role: string }) {
   const qc = useQueryClient();
   const users = useUsers();
   const [f, setF] = useState({ title: "", axis: "HARD", start: "", end: "", criteria: "", milestone: false, lead: "", hours: "4" });
   const set = (k: string) => (v: string | boolean) => setF({ ...f, [k]: v });
   const people = (users.data ?? []).map((u) => ({ value: u.id, label: u.name }));
+  const validation = useSettings().data?.validation_enabled ?? true;
 
   const submit = async () => {
     if (!f.title.trim() || !f.start || !f.end || !f.lead) {
@@ -340,7 +357,7 @@ function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () 
         <Textarea label="Terminé quand" value={f.criteria} onChange={(e) => set("criteria")(e.target.value)} rows={2} />
         <Checkbox label="Jalon (date unique, ne bouge jamais seul)" checked={f.milestone}
           onChange={(e) => set("milestone")(e.currentTarget.checked)} />
-        {role !== "pilot" && <p style={{ color: muted, fontSize: 13 }}>En tant que membre, ta tâche part en validation.</p>}
+        {role !== "pilot" && validation && <p style={{ color: muted, fontSize: 13 }}>En tant que membre, ta tâche part en validation.</p>}
         <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
           <Button variant="default" onClick={onClose}>Annuler</Button>
           <Button onClick={submit}>Créer</Button>

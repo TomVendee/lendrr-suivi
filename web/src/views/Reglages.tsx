@@ -1,9 +1,9 @@
 /** Écran Reglages : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, NumberInput, PasswordInput, Select, TextInput, Textarea } from "@mantine/core";
+import { Button, NumberInput, PasswordInput, Radio, Select, Switch, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { api, type User } from "../api";
+import { api, useSettings, type Settings, type User } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, line, muted } from "../theme";
 
 export function Reglages() {
@@ -34,6 +34,8 @@ export function Reglages() {
   return (
     <>
       <PageHead title="Réglages" sub="Projet LENDRR · seul le chef de projet voit cet écran" />
+
+      <ReglagesProjet users={users.data ?? []} />
 
       <section aria-labelledby="membres-titre" style={{ ...card, padding: "8px 24px 16px" }}>
         <h2 id="membres-titre" style={{ margin: "14px 0 4px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Membres de l'équipe</h2>
@@ -150,5 +152,137 @@ function Capacites({ users }: { users: User[] }) {
         <Button variant="default" onClick={save}>Enregistrer</Button>
       </div>
     </section>
+  );
+}
+
+const h2 = { margin: "14px 0 4px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 } as const;
+
+/** Une ligne « libellé + explication » avec son interrupteur, comme la maquette. */
+function Ligne({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 0", borderBottom: `1px solid ${line}` }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: 13, color: muted }}>{desc}</div>
+      </div>
+      <Switch aria-label={label} checked={checked} onChange={(e) => onChange(e.currentTarget.checked)} />
+    </div>
+  );
+}
+
+/** Validation des tâches, collaborateurs et seuils d'alerte (maquette Reglages.dc.html). */
+function ReglagesProjet({ users }: { users: User[] }) {
+  const qc = useQueryClient();
+  const settings = useSettings();
+  const [draft, setDraft] = useState<Settings | null>(null);
+  const [saved, setSaved] = useState<boolean | null>(null);
+  const s = draft ?? settings.data;
+  if (!s) return null;
+  const set = (patch: Partial<Settings>) => {
+    setDraft({ ...s, ...patch });
+    setSaved(false);
+  };
+  const pilot = users.find((u) => u.role === "pilot")?.name ?? "le chef de projet";
+  const validator = s.validator_id ? users.find((u) => u.id === s.validator_id)?.name ?? "?" : pilot;
+  const others = users.filter((u) => u.role !== "pilot").map((u) => ({ value: u.id, label: u.name }));
+
+  const phrases: string[] = [];
+  if (s.validation_enabled) {
+    phrases.push(s.members_can_propose
+      ? `Les membres proposent des tâches, ${validator} les valide avant qu'elles apparaissent chez les collaborateurs.`
+      : `Seul ${pilot} crée les tâches, qui sont publiées dès leur création.`);
+    if (s.members_can_propose && s.revalidate_on_edit) phrases.push("Toute modification d'un membre repasse par la validation.");
+  } else {
+    phrases.push(s.members_can_propose
+      ? "Les tâches créées par n'importe quel membre sont visibles immédiatement."
+      : `Seul ${pilot} crée les tâches, visibles immédiatement.`);
+  }
+  phrases.push(s.hours_mode === "equal_split"
+    ? "Les heures prévues se saisissent en un total réparti à parts égales."
+    : "Les heures prévues se saisissent pour chaque collaborateur.");
+
+  const save = async () => {
+    try {
+      const { validation_enabled, revalidate_on_edit, members_can_propose, validator_id, deputy_id, reminder_days,
+        hours_mode, overrun_pct, overrun_hours, blocking_days } = s;
+      await api("/api/settings", { method: "PUT", body: JSON.stringify({ validation_enabled, revalidate_on_edit,
+        members_can_propose, validator_id, deputy_id, reminder_days, hours_mode, overrun_pct, overrun_hours, blocking_days }) });
+      setSaved(true);
+      setDraft(null);
+      notifications.show({ message: "Réglages enregistrés.", color: "ok" });
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["alerts"] });
+    } catch (e) {
+      notifications.show({ message: `Échec : ${String(e)}`, color: "crit" });
+    }
+  };
+
+  return (
+    <>
+      <section aria-labelledby="validation-titre" style={{ ...card, padding: "8px 24px 16px" }}>
+        <h2 id="validation-titre" style={h2}>Validation des tâches</h2>
+        <Ligne label="Validation obligatoire par le chef de projet"
+          desc="Une tâche créée ou proposée n'apparaît chez ses collaborateurs (Ma semaine, plan de charge, alertes) qu'après validation."
+          checked={s.validation_enabled} onChange={(v) => set({ validation_enabled: v })} />
+        {s.validation_enabled && (
+          <>
+            <Ligne label="Revalider après une modification"
+              desc="Si un membre modifie une tâche, elle repasse en attente. L'ancienne version reste affichée jusqu'à la validation."
+              checked={s.revalidate_on_edit} onChange={(v) => set({ revalidate_on_edit: v })} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, padding: "12px 0" }}>
+              <Select label="Validateur" value={s.validator_id ?? "pilot"} allowDeselect={false}
+                data={[{ value: "pilot", label: `${pilot} (chef de projet)` }, ...others]}
+                onChange={(v) => set({ validator_id: v === "pilot" ? null : v })} />
+              <Select label="Suppléant en cas d'absence" value={s.deputy_id ?? "none"} allowDeselect={false}
+                data={[{ value: "none", label: "Aucun" }, ...others]}
+                onChange={(v) => set({ deputy_id: v === "none" ? null : v })} />
+              <Select label="Me rappeler une tâche en attente après" value={String(s.reminder_days ?? "never")} allowDeselect={false}
+                data={[{ value: "1", label: "1 jour" }, { value: "2", label: "2 jours" }, { value: "3", label: "3 jours" }, { value: "never", label: "Jamais" }]}
+                onChange={(v) => set({ reminder_days: v === "never" || !v ? null : Number(v) })} />
+            </div>
+          </>
+        )}
+        <Radio.Group label="Qui peut créer ou proposer une tâche ?" value={s.members_can_propose ? "all" : "pilot"}
+          onChange={(v) => set({ members_can_propose: v === "all" })} style={{ padding: "12px 0" }}>
+          <Radio value="all" mt={8} label="Tout le monde · les membres proposent, le chef de projet valide" />
+          <Radio value="pilot" mt={8} label="Chef de projet seulement · les membres peuvent seulement saisir leurs heures et leur statut" />
+        </Radio.Group>
+      </section>
+
+      <section aria-labelledby="assign-titre" style={{ ...card, padding: "8px 24px 16px" }}>
+        <h2 id="assign-titre" style={h2}>Collaborateurs par tâche</h2>
+        <p style={{ color: muted, fontSize: 14 }}>
+          Plusieurs collaborateurs par tâche, chacun avec ses heures prévues. Un pilote obligatoire, les autres en appui :
+          une tâche sans pilote ne peut pas être validée.
+        </p>
+        <Radio.Group label="Heures prévues" value={s.hours_mode} onChange={(v) => set({ hours_mode: v as Settings["hours_mode"] })}>
+          <Radio value="per_person" mt={8} label="Saisies pour chaque collaborateur · ex. Reda 2 h, Tom G. 1 h, Erwen 0,5 h" />
+          <Radio value="equal_split" mt={8} label="Un total réparti à parts égales · ex. 3,5 h pour 3 personnes = 1,2 h chacune" />
+        </Radio.Group>
+      </section>
+
+      <section aria-labelledby="seuils-titre" style={{ ...card, padding: "8px 24px 16px" }}>
+        <h2 id="seuils-titre" style={h2}>Seuils d'alerte</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, paddingTop: 8 }}>
+          <NumberInput label="Dépassement réel au-delà de (%)" min={0} max={200} step={5} suffix=" %"
+            value={Math.round(s.overrun_pct * 100)} onChange={(v) => typeof v === "number" && set({ overrun_pct: v / 100 })} />
+          <NumberInput label="… ou au-delà de (heures)" min={0} max={20} step={0.5} decimalSeparator="," suffix=" h"
+            value={s.overrun_hours} onChange={(v) => typeof v === "number" && set({ overrun_hours: v })} />
+          <NumberInput label="Retard bloquant si un successeur commence dans moins de (jours)" min={1} max={30}
+            value={s.blocking_days} onChange={(v) => typeof v === "number" && set({ blocking_days: v })} />
+        </div>
+      </section>
+
+      <section aria-label="Effet des réglages" style={{ background: "light-dark(#202326, #2B2F33)", color: C.fond, borderRadius: 12, padding: "18px 24px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: C.navMuted }}>Avec ces réglages</div>
+        <div style={{ fontSize: 14 }}>{phrases.join(" ")}</div>
+      </section>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
+        <Button onClick={save}>Enregistrer les réglages</Button>
+        <span role="status" style={{ fontSize: 14, color: muted }}>
+          {saved === true ? "Réglages enregistrés." : saved === false ? "Modifications non enregistrées." : ""}
+        </span>
+      </div>
+    </>
   );
 }

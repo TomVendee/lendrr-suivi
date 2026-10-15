@@ -52,6 +52,8 @@ ne passent pas par le proxy Vite : les appeler directement sur `:8080`.
   `Bearer`. Un module par ressource. État construit depuis `Config` (`src/config.rs`). Aucun test d'API.
 - `src/mcp.rs` : serveur `rmcp` stateless sous `/mcp`, mêmes règles et rôles que la REST.
 - `src/domain/` : fonctions pures testées ; les routes y délèguent les calculs.
+- `src/routes/settings.rs` : réglages du pilote (ligne unique `settings`), lus par `settings::load` dans les
+  écritures de tâches (`write_mode`), la file de validation (`can_decide`) et les alertes (seuils, rappel).
 - `src/web.rs` : lit `web/dist` **relativement au dossier courant** (lancer depuis la racine), fallback SPA
   vers `index.html`, page « socle OK » si le front n'est pas construit ; `/api/*`, `/mcp`, `/health`,
   `/ready` inconnus → 404.

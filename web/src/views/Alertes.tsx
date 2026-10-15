@@ -1,12 +1,12 @@
 /** Écran Alertes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Button } from "@mantine/core";
-import { api } from "../api";
+import { api, fmtDate } from "../api";
 import { C, F_TITRE, PageHead, card, ink, muted, track } from "../theme";
 
 export interface Alert {
   kind: string; severity: number; title?: string; milestone?: string;
-  user?: string; week?: number; task_id?: string;
+  user?: string; week?: number; task_id?: string; since?: string;
 }
 
 export const TAG: Record<string, { label: string; style: React.CSSProperties }> = {
@@ -17,13 +17,14 @@ export const TAG: Record<string, { label: string; style: React.CSSProperties }> 
   "missing-hours": { label: "Heures non déclarées", style: { background: C.warnFond, color: "#7A4F10" } },
   overrun: { label: "Dépassement réel", style: { background: "#E9EBEE", color: ink } },
   incomplete: { label: "Tâche incomplète", style: { background: "#E9EBEE", color: ink } },
+  "validation-pending": { label: "Validation en attente", style: { background: "#E9EBEE", color: ink } },
 };
 
 export function alertDetail(a: Alert): string {  switch (a.kind) {
     case "milestone-threatened":
       return a.milestone ? `« ${a.milestone} » menacé.` : `« ${a.title ?? ""} » en retard sur le chemin critique.`;
     case "blocking-late":
-      return `${a.user ?? ""} · bloque une tâche qui démarre dans moins de 7 jours.`;
+      return `${a.user ?? ""} · bloque une tâche qui démarre bientôt (seuil des réglages).`;
     case "late":
       return `${a.user ?? ""} · échéance dépassée et tâche non terminée.`;
     case "overload":
@@ -31,9 +32,11 @@ export function alertDetail(a: Alert): string {  switch (a.kind) {
     case "missing-hours":
       return `${a.user ?? ""} · aucune saisie pour la S${a.week}.`;
     case "overrun":
-      return `${a.user ?? ""} · réel au-dessus du prévu (+25 % ou +1 h).`;
+      return `${a.user ?? ""} · réel au-dessus du prévu, au-delà du seuil des réglages.`;
     case "incomplete":
       return `Sans pilote ou sans heures prévues.`;
+    case "validation-pending":
+      return `Proposée le ${a.since ? fmtDate(a.since) : "?"}, toujours à valider.`;
     default:
       return "";
   }

@@ -27,6 +27,8 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | D18 | Accès IA / MCP | **MCP plein accès** (`POST /mcp`, Streamable HTTP `rmcp` stateless), mêmes règles et rôles que la REST, contrat dans `docs/mcp.md`. Implémenté après F5. Tokens personnels `api_tokens` (hash SHA-256, révocables). | Pilotage par les IA comme Linear, sans clé d'IA externe (D15 intacte). |
 | D19 | Stockage croissant | **Tout en Postgres** : `baselines` + `app_snapshots` (JSONB) en base, pas de S3 en V1. < 50 Mo/an estimés, 1Gi tient des années. | S3 503 au 09/10 ; les baselines hebdo sont la référence du prévu. |
 | D20 | Purge | `task_revisions` validées/rejetées purgées après **90 j** ; `time_entries` et `baselines` jamais purgés. | Place + traçabilité soutenance. |
+| D21 | Début du projet | **Fixe : S01 = lundi 24/08/2026**, non modifiable dans Réglages (colonne `settings.project_start` ignorée). | Les numéros de semaine sont stockés dans `time_entries`, `capacity_overrides` et `baselines` : changer la date de départ les fausserait tous. |
+| D22 | Validateurs | Validateur vide = le pilote. Le **pilote, le validateur désigné et le suppléant** peuvent tous valider, **à tout moment** (pas de notion d'absence). Rappel après N jours ouvrés (`reminder_days`, 2 par défaut) affiché comme alerte « Validation en attente », sans notification. Mode « total à parts égales » : aide de saisie côté formulaire, arrondi à 0,1 h, sans effet sur les calculs. | Choix de Tom A. (15/10/2026) ; notifications hors V1. |
 
 ## Risques acceptés
 

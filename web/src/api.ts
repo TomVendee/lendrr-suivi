@@ -41,6 +41,26 @@ export interface Task {
   depends_on: { id: string; title: string }[];
 }
 
+export interface Settings {
+  validation_enabled: boolean;
+  revalidate_on_edit: boolean;
+  members_can_propose: boolean;
+  validator_id: string | null;
+  deputy_id: string | null;
+  reminder_days: number | null;
+  hours_mode: "per_person" | "equal_split";
+  overrun_pct: number;
+  overrun_hours: number;
+  blocking_days: number;
+}
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ["settings"],
+    queryFn: () => api<Settings & { can_decide: boolean }>("/api/settings"),
+  });
+}
+
 export function useMe() {
   return useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/api/me"), retry: false });
 }
