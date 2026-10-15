@@ -36,6 +36,7 @@ export interface Task {
   end_date: string;
   status: string;
   done_criteria: string;
+  description: string;
   milestone: boolean;
   assignments: Assignment[];
   depends_on: { id: string; title: string }[];

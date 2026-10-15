@@ -15,6 +15,7 @@ relancé deux fois, il ne crée aucun doublon (`external_key` = gid Asana).
       "end": "2026-10-23",
       "status": "todo",                  // todo | in_progress | blocked | done
       "criteria": "Le casier s'ouvre",   // « Terminé quand », peut être vide
+      "description": "Notes Asana…",     // facultatif ; absent = description de l'app conservée au réimport
       "milestone": false,
       "assignees": [
         {"email": "tom@example.com", "role": "lead", "hours": 4.0}

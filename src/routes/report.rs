@@ -48,9 +48,9 @@ pub async fn take_baseline(
 /// Fige la semaine : baseline (dates + heures prévues) et sauvegarde JSON complète (D19).
 /// Partagée par le bouton du pilote et la tâche de fond du lundi.
 pub async fn snapshot_week(pool: &sqlx::PgPool, week: i32) -> Result<(), sqlx::Error> {
-    type Row = (uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool);
+    type Row = (uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool, String);
     let tasks: Vec<Row> =
-        sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, milestone FROM tasks")
+        sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, milestone, description FROM tasks")
             .fetch_all(pool)
             .await?;
     let assigns: Vec<(uuid::Uuid, uuid::Uuid, String, f64)> =
@@ -59,8 +59,8 @@ pub async fn snapshot_week(pool: &sqlx::PgPool, week: i32) -> Result<(), sqlx::E
             .await?;
     let snap = json!({
         "week": week, "taken_at": chrono::Utc::now(),
-        "tasks": tasks.iter().map(|(id, t, a, sd, ed, st, ms)| json!({
-            "id": id, "title": t, "axis": a, "start": sd, "end": ed, "status": st, "milestone": ms,
+        "tasks": tasks.iter().map(|(id, t, a, sd, ed, st, ms, desc)| json!({
+            "id": id, "title": t, "axis": a, "start": sd, "end": ed, "status": st, "milestone": ms, "description": desc,
             "assignments": assigns.iter().filter(|(tid, _, _, _)| tid == id)
                 .map(|(_, u, r, h)| json!({"user_id": u, "role": r, "hours": h})).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),

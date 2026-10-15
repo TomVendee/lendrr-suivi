@@ -12,8 +12,20 @@ use validator::Validate;
 use super::{AppState, current_user};
 use crate::domain::validation::{WriteMode, can_validate, valid_axis, write_mode};
 
-/// Colonnes publiées d'une tâche, dans l'ordre des SELECT de ce module.
-type TaskRow = (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool);
+/// Colonnes publiées d'une tâche (champs nommés : pas d'erreur de position dans un tuple).
+#[derive(sqlx::FromRow)]
+struct TaskRow {
+    id: uuid::Uuid,
+    title: String,
+    axis_code: String,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
+    status: String,
+    done_criteria: String,
+    description: String,
+    milestone: bool,
+}
+const TASK_COLS: &str = "id, title, axis_code, start_date, end_date, status, done_criteria, description, milestone";
 
 #[derive(Serialize)]
 pub struct AssignmentOut {
@@ -31,6 +43,7 @@ pub struct TaskOut {
     pub end_date: NaiveDate,
     pub status: String,
     pub done_criteria: String,
+    pub description: String,
     pub milestone: bool,
     pub assignments: Vec<AssignmentOut>,
     pub depends_on: Vec<DepOut>,
@@ -66,6 +79,8 @@ pub struct TaskIn {
     pub end_date: NaiveDate,
     #[validate(length(max = 2000))]
     pub done_criteria: Option<String>,
+    #[validate(length(max = 10000))]
+    pub description: Option<String>,
     pub milestone: Option<bool>,
     pub assignments: Vec<AssignmentIn>,
 }
@@ -176,7 +191,7 @@ async fn gate(
             .bind(json!({
                 "title": input.title, "axis_code": input.axis_code,
                 "start_date": input.start_date, "end_date": input.end_date,
-                "done_criteria": input.done_criteria, "milestone": input.milestone,
+                "done_criteria": input.done_criteria, "description": input.description, "milestone": input.milestone,
                 "assignments": input.assignments.iter().map(|a| json!({
                     "user_id": a.user_id, "role": a.role, "planned_hours": a.planned_hours
                 })).collect::<Vec<_>>(),
@@ -215,7 +230,7 @@ pub async fn list(
     if current_user(&s.pool, &headers).await.is_err() {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     }
-    let mut q = "SELECT id, title, axis_code, start_date, end_date, status, done_criteria, milestone FROM tasks WHERE 1=1".to_string();
+    let mut q = format!("SELECT {TASK_COLS} FROM tasks WHERE 1=1");
     // Paramètres numérotés $1.. construits dans l'ordre (axis, status, q).
     let mut n = 0;
     if f.axis.is_some() {
@@ -252,7 +267,7 @@ pub async fn list(
 }
 
 async fn task_out(pool: &sqlx::PgPool, row: TaskRow) -> TaskOut {
-    let (id, title, axis_code, start_date, end_date, status, done_criteria, milestone) = row;
+    let TaskRow { id, title, axis_code, start_date, end_date, status, done_criteria, description, milestone } = row;
     let assigns: Vec<(uuid::Uuid, String, f64)> =
         sqlx::query_as("SELECT user_id, role, planned_hours FROM assignments WHERE task_id = $1")
             .bind(id)
@@ -274,6 +289,7 @@ async fn task_out(pool: &sqlx::PgPool, row: TaskRow) -> TaskOut {
         end_date,
         status,
         done_criteria,
+        description,
         milestone,
         assignments: assigns
             .into_iter()
@@ -293,7 +309,7 @@ pub async fn get(
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     }
     let row: Option<TaskRow> =
-        sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, done_criteria, milestone FROM tasks WHERE id = $1")
+        sqlx::query_as(&format!("SELECT {TASK_COLS} FROM tasks WHERE id = $1"))
             .bind(id)
             .fetch_optional(&s.pool)
             .await
@@ -330,8 +346,8 @@ pub async fn create(
         Err(_) => return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
     };
     let id: uuid::Uuid = match sqlx::query_scalar(
-        "INSERT INTO tasks (title, axis_code, start_date, end_date, done_criteria, milestone)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+        "INSERT INTO tasks (title, axis_code, start_date, end_date, done_criteria, milestone, description)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
     )
     .bind(input.title.trim())
     .bind(&input.axis_code)
@@ -339,6 +355,7 @@ pub async fn create(
     .bind(input.end_date)
     .bind(input.done_criteria.clone().unwrap_or_default())
     .bind(milestone)
+    .bind(input.description.clone().unwrap_or_default())
     .fetch_one(&mut *tx)
     .await
     {
@@ -403,7 +420,7 @@ pub async fn update(
     };
     let n = sqlx::query(
         "UPDATE tasks SET title=$1, axis_code=$2, start_date=$3, end_date=$4,
-         done_criteria=$5, milestone=$6 WHERE id=$7",
+         done_criteria=$5, milestone=$6, description=$8 WHERE id=$7",
     )
     .bind(input.title.trim())
     .bind(&input.axis_code)
@@ -412,6 +429,7 @@ pub async fn update(
     .bind(input.done_criteria.clone().unwrap_or_default())
     .bind(input.milestone.unwrap_or(false))
     .bind(id)
+    .bind(input.description.clone().unwrap_or_default())
     .execute(&mut *tx)
     .await
     .map(|r| r.rows_affected())

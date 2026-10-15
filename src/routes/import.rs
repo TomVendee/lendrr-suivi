@@ -28,6 +28,8 @@ pub struct TaskIn {
     pub end: NaiveDate,
     pub status: Option<String>,
     pub criteria: Option<String>,
+    /// Facultatif : absent, la description saisie dans l'app est conservée au réimport.
+    pub description: Option<String>,
     pub milestone: Option<bool>,
     pub assignees: Vec<AssigneeIn>,
     pub depends_on: Option<Vec<String>>,
@@ -94,13 +96,13 @@ pub async fn import_asana(
             continue;
         }
         let id: uuid::Uuid = sqlx::query_scalar(
-            "INSERT INTO tasks (title, axis_code, start_date, end_date, status, done_criteria, milestone, external_key)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            "INSERT INTO tasks (title, axis_code, start_date, end_date, status, done_criteria, milestone, external_key, description)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,''))
              ON CONFLICT (external_key) DO UPDATE SET
                title=EXCLUDED.title, axis_code=EXCLUDED.axis_code,
                start_date=EXCLUDED.start_date, end_date=EXCLUDED.end_date,
                status=EXCLUDED.status, done_criteria=EXCLUDED.done_criteria,
-               milestone=EXCLUDED.milestone
+               milestone=EXCLUDED.milestone, description=COALESCE($9, tasks.description)
              RETURNING id",
         )
         .bind(t.title.trim())
@@ -111,6 +113,7 @@ pub async fn import_asana(
         .bind(t.criteria.clone().unwrap_or_default())
         .bind(milestone)
         .bind(&t.key)
+        .bind(t.description.as_deref().map(str::trim))
         .fetch_one(&s.pool)
         .await
         .unwrap_or_else(|_| uuid::Uuid::nil());

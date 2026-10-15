@@ -77,7 +77,7 @@ pub async fn decide(
 
 /// Retouche une révision en attente avant de la valider (pilote, validateur, suppléant).
 /// Le payload suit le même schéma que la création (titre, axis_code, dates,
-/// done_criteria, milestone, assignments[]) ; refusé si pas exactement 1 lead.
+/// done_criteria, description, milestone, assignments[]) ; refusé si pas exactement 1 lead.
 pub async fn update_payload(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -157,7 +157,7 @@ pub async fn apply_payload(
         Some(t) => {
             let n = sqlx::query(
                 "UPDATE tasks SET title=$1, axis_code=$2, start_date=$3, end_date=$4,
-                 done_criteria=$5, milestone=$6 WHERE id=$7",
+                 done_criteria=$5, milestone=$6, description=$8 WHERE id=$7",
             )
             .bind(title)
             .bind(axis)
@@ -166,6 +166,7 @@ pub async fn apply_payload(
             .bind(p.get("done_criteria").and_then(|v| v.as_str()).unwrap_or(""))
             .bind(p.get("milestone").and_then(|v| v.as_bool()).unwrap_or(false))
             .bind(t)
+            .bind(p.get("description").and_then(|v| v.as_str()).unwrap_or(""))
             .execute(&mut *tx)
             .await
             .map(|r| r.rows_affected())
@@ -182,8 +183,8 @@ pub async fn apply_payload(
         }
         None => {
             sqlx::query_scalar(
-                "INSERT INTO tasks (title, axis_code, start_date, end_date, done_criteria, milestone)
-                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+                "INSERT INTO tasks (title, axis_code, start_date, end_date, done_criteria, milestone, description)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id",
             )
             .bind(title)
             .bind(axis)
@@ -191,6 +192,7 @@ pub async fn apply_payload(
             .bind(end)
             .bind(p.get("done_criteria").and_then(|v| v.as_str()).unwrap_or(""))
             .bind(p.get("milestone").and_then(|v| v.as_bool()).unwrap_or(false))
+            .bind(p.get("description").and_then(|v| v.as_str()).unwrap_or(""))
             .fetch_one(&mut *tx)
             .await
             .map_err(|_| "insert-failed")?
