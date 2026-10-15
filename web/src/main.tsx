@@ -7,8 +7,10 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
 import "@mantine/charts/styles.css";
+import "./styles/tokens.css";
+import "./styles/global.css";
 import { App } from "./App";
-import { theme } from "./mantine-theme";
+import { resolver, theme } from "./mantine-theme";
 
 const qc = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: true, refetchInterval: 60_000 } },
@@ -19,8 +21,8 @@ const schemeManager = localStorageColorSchemeManager({ key: "suivi-color-scheme"
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ColorSchemeScript defaultColorScheme="light" />
-    <MantineProvider theme={theme} defaultColorScheme="light" colorSchemeManager={schemeManager}>
+    <ColorSchemeScript defaultColorScheme="auto" />
+    <MantineProvider theme={theme} cssVariablesResolver={resolver} defaultColorScheme="auto" colorSchemeManager={schemeManager}>
       <Notifications position="bottom-center" />
       <QueryClientProvider client={qc}>
         <App />

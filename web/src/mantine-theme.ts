@@ -1,31 +1,49 @@
-import { createTheme } from "@mantine/core";
+import { createTheme, type CSSVariablesResolver } from "@mantine/core";
 
 /**
- * Thème : jetons docs/maquettes/README.md mappés sur Mantine.
- * Chaque tuple a 10 nuances (exigé par Mantine) autour de la couleur maquette.
+ * Thème « Précision » (D23). Les rampes servent aux composants Mantine (boutons, interrupteurs…) ;
+ * les surfaces et le texte viennent des jetons de styles/tokens.css.
  */
 export const theme = createTheme({
   primaryColor: "brand",
+  primaryShade: { light: 6, dark: 4 },
   colors: {
     brand: [
-      "#E3EBFD", "#CBD9FB", "#A9C0F5", "#8FB0FF", "#5B83EB",
-      "#2D5BD7", "#2549B4", "#1E40AF", "#1A387F", "#162E66",
+      "#EEF0FF", "#E0E3FF", "#C7CBFE", "#A5ABFC", "#8287F8",
+      "#6366F1", "#5048E5", "#4338CA", "#3730A3", "#312E81",
     ],
     ok: [
-      "#E3F1E8", "#C4E2CF", "#9CCBB0", "#6BAE87", "#47976A",
-      "#2E7D4F", "#256841", "#23603C", "#1D4E32", "#173E28",
+      "#E6F6EE", "#C5EBD7", "#9DDBBB", "#6FC79A", "#46B07B",
+      "#2E9A66", "#247F54", "#1D6644", "#174F35", "#113B28",
     ],
     warn: [
-      "#FBF1DE", "#F3DFAE", "#E9C67E", "#D9A94F", "#C68D2E",
-      "#B7791F", "#9A651A", "#8A5A12", "#6E4710", "#57390D",
+      "#FDF4E1", "#FAE6BA", "#F5D38A", "#EFBE58", "#E6A933",
+      "#D4941A", "#B07813", "#8C5E10", "#6B470D", "#4F340A",
     ],
     crit: [
-      "#FDE7E4", "#F6C2BC", "#EC948A", "#DD6156", "#C93E32",
-      "#B42318", "#971D14", "#8F1C13", "#731711", "#5C120E",
+      "#FDECEC", "#F9CFCF", "#F2A7A7", "#EA7A7B", "#E25556",
+      "#D63A3C", "#B52D2F", "#912426", "#6F1C1E", "#521517",
     ],
   },
-  fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
-  headings: { fontFamily: "'Space Grotesk', sans-serif" },
-  fontFamilyMonospace: "'IBM Plex Mono', monospace",
+  fontFamily: "var(--font-sans)",
+  fontFamilyMonospace: "var(--font-mono)",
+  headings: { fontFamily: "var(--font-sans)", fontWeight: "600" },
   defaultRadius: "md",
+  radius: { xs: "4px", sm: "6px", md: "10px", lg: "14px", xl: "20px" },
+  cursorType: "pointer",
+  focusRing: "auto",
 });
+
+/** Surfaces, texte et bordures de Mantine alignés sur nos jetons, en clair comme en sombre. */
+const shared = {
+  "--mantine-color-body": "var(--bg)",
+  "--mantine-color-text": "var(--text-1)",
+  "--mantine-color-dimmed": "var(--text-2)",
+  "--mantine-color-placeholder": "var(--text-3)",
+  "--mantine-color-default": "var(--surface-1)",
+  "--mantine-color-default-hover": "var(--sunken)",
+  "--mantine-color-default-color": "var(--text-1)",
+  "--mantine-color-default-border": "var(--border-strong)",
+};
+
+export const resolver: CSSVariablesResolver = () => ({ variables: {}, light: shared, dark: shared });

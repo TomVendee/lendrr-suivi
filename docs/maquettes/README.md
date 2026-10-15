@@ -32,7 +32,10 @@ Les tâches, les heures prévues, les dépendances et les jalons viennent du **v
 Les heures déclarées, les statuts, l'avancement et trois des quatre alertes de la Météo sont **fictifs**. Les
 liens du Gantt suivent l'enchaînement logique ; les 78 vraies dépendances viendront de l'import Asana.
 
-## Jetons de design
+## Jetons de design (historique)
+
+> Remplacés par la DA « Précision » (D23, `web/src/styles/tokens.css`). Les maquettes restent la référence de
+> structure et de contenu des écrans, plus du visuel.
 
 | Jeton | Valeur | Usage |
 | --- | --- | --- |

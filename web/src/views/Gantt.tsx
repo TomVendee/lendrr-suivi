@@ -71,9 +71,9 @@ export function Gantt({ role }: { role: string }) {
       outline: moved.includes(t.id) ? `2px solid ${C.accent}` : undefined,
       outlineOffset: 1,
     };
-    if (late) return { ...base, background: "#FFFFFF", border: "2px solid #B42318" };
+    if (late) return { ...base, background: "var(--on-accent)", border: "2px solid var(--crit)" };
     if (t.critical) return { ...base, background: C.accent };
-    return { ...base, background: "#9AA0A6", opacity: critSeul ? 0.18 : 1 };
+    return { ...base, background: "var(--text-3)", opacity: critSeul ? 0.18 : 1 };
   };
   const onBarDown = (t: GTask) => (e: React.PointerEvent) => {
     if (role !== "pilot" || t.milestone) return;
@@ -135,7 +135,7 @@ export function Gantt({ role }: { role: string }) {
     return (
       <div key={t.id} style={{ display: "grid", gridTemplateColumns: "280px minmax(0, 1fr)", height: ROW_T, boxSizing: "border-box", borderTop: `1px solid ${track}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 8px 0 30px", minWidth: 0 }}>
-          <span style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: t.critical ? 600 : 400, color: critSeul && !t.critical ? "#9AA0A6" : undefined }}>{t.title}</span>
+          <span style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: t.critical ? 600 : 400, color: critSeul && !t.critical ? "var(--text-3)" : undefined }}>{t.title}</span>
         </div>
         <div style={{ position: "relative", backgroundImage: `repeating-linear-gradient(to right, ${track} 0, ${track} 1px, transparent 1px, transparent 10%)` }}>
           <div onPointerDown={onBarDown(t)} title={role === "pilot" && !t.milestone ? "Glisser pour déplacer" : undefined} style={bar(t)} />
@@ -152,7 +152,7 @@ export function Gantt({ role }: { role: string }) {
           <span style={{ fontFamily: F_MONO, fontSize: 12, color: muted }}>{fmtDate(t.start)}</span>
         </div>
         <div style={{ position: "relative", backgroundImage: "repeating-linear-gradient(to right, ${track} 0, ${track} 1px, transparent 1px, transparent 10%)" }}>
-          <div style={{ position: "absolute", top: 9, width: 12, height: 12, marginLeft: -6, transform: "rotate(45deg)", boxSizing: "border-box", left: `${pct(t.start)}%`, background: t.end < today && t.status !== "done" ? "#B42318" : C.encre }} />
+          <div style={{ position: "absolute", top: 9, width: 12, height: 12, marginLeft: -6, transform: "rotate(45deg)", boxSizing: "border-box", left: `${pct(t.start)}%`, background: t.end < today && t.status !== "done" ? "var(--crit)" : C.encre }} />
         </div>
       </div>
     );
@@ -211,7 +211,7 @@ export function Gantt({ role }: { role: string }) {
     deps.forEach((l, i) => {
       const a = places[l.from], b = places[l.to];
       if (!a || !b) return;
-      const col = a.crit && b.crit ? C.accent : "#6B7177";
+      const col = a.crit && b.crit ? C.accent : "var(--text-3)";
       const fade = critSeul && !(a.crit && b.crit) ? 0.12 : 1;
       const xCoude = Math.max(a.x1 + 0.4, b.x0 - 1.2);
       const haut = Math.min(a.y, b.y), bas = Math.max(a.y, b.y);
@@ -246,12 +246,12 @@ export function Gantt({ role }: { role: string }) {
           </>
         }
       />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 13, color: "#4A5056" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 20, fontSize: 13, color: "var(--text-2)" }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: C.accent }} />Chemin critique</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "#9AA0A6" }} />Tâche avec marge</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: surf, border: "2px solid #B42318", boxSizing: "border-box" }} />En retard</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "var(--text-3)" }} />Tâche avec marge</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: surf, border: "2px solid var(--crit)", boxSizing: "border-box" }} />En retard</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 10, height: 10, transform: "rotate(45deg)", background: C.encre }} />Jalon</span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 2, height: 14, background: "#B42318" }} />Aujourd'hui, {fmtDate(today)}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" style={{ width: 2, height: 14, background: "var(--crit)" }} />Aujourd'hui, {fmtDate(today)}</span>
       </div>
       <section aria-label="Diagramme de Gantt" style={{ ...card, padding: "16px 18px 20px", overflowX: "auto" }}>
         <div ref={plotRef} style={{ position: "relative", minWidth: 980 }}>
@@ -269,7 +269,7 @@ export function Gantt({ role }: { role: string }) {
           {rows}
           <div aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: 280, right: 0, pointerEvents: "none" }}>
             {segs}
-            <div style={{ position: "absolute", top: 0, bottom: 0, width: 2, background: "#B42318", left: `${todayPct}%` }} />
+            <div style={{ position: "absolute", top: 0, bottom: 0, width: 2, background: "var(--crit)", left: `${todayPct}%` }} />
           </div>
         </div>
       </section>

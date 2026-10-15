@@ -10,14 +10,14 @@ export interface Alert {
 }
 
 export const TAG: Record<string, { label: string; style: React.CSSProperties }> = {
-  "milestone-threatened": { label: "Jalon menacé", style: { background: C.crit, color: "#FFFFFF" } },
-  "blocking-late": { label: "Retard bloquant", style: { background: C.critFond, color: "#8F1C13" } },
-  late: { label: "Tâche en retard", style: { background: C.critFond, color: "#8F1C13" } },
-  overload: { label: "Surcharge prévue", style: { background: C.warnFond, color: "#7A4F10" } },
-  "missing-hours": { label: "Heures non déclarées", style: { background: C.warnFond, color: "#7A4F10" } },
-  overrun: { label: "Dépassement réel", style: { background: "#E9EBEE", color: ink } },
-  incomplete: { label: "Tâche incomplète", style: { background: "#E9EBEE", color: ink } },
-  "validation-pending": { label: "Validation en attente", style: { background: "#E9EBEE", color: ink } },
+  "milestone-threatened": { label: "Jalon menacé", style: { background: C.crit, color: "var(--on-accent)" } },
+  "blocking-late": { label: "Retard bloquant", style: { background: C.critFond, color: "var(--crit-text)" } },
+  late: { label: "Tâche en retard", style: { background: C.critFond, color: "var(--crit-text)" } },
+  overload: { label: "Surcharge prévue", style: { background: C.warnFond, color: "var(--warn-text)" } },
+  "missing-hours": { label: "Heures non déclarées", style: { background: C.warnFond, color: "var(--warn-text)" } },
+  overrun: { label: "Dépassement réel", style: { background: "var(--sunken)", color: ink } },
+  incomplete: { label: "Tâche incomplète", style: { background: "var(--sunken)", color: ink } },
+  "validation-pending": { label: "Validation en attente", style: { background: "var(--sunken)", color: ink } },
 };
 
 export function alertDetail(a: Alert): string {  switch (a.kind) {
@@ -42,7 +42,7 @@ export function alertDetail(a: Alert): string {  switch (a.kind) {
   }
 }
 
-export function Alertes({ goTaches }: { goTaches: () => void }) {
+export function Alertes({ goTaches }: { goTaches: (taskId?: string) => void }) {
   const q = useQuery({
     queryKey: ["alerts"], queryFn: () => api<{ alerts: Alert[] }>("/api/alerts"),
   });
@@ -62,7 +62,7 @@ export function Alertes({ goTaches }: { goTaches: () => void }) {
                 <span style={{ fontWeight: 600 }}>{a.title ?? a.milestone ?? tag.label}</span>
                 <span style={{ fontSize: 14, color: muted }}>{alertDetail(a)}</span>
               </div>
-              <Button variant="default" onClick={goTaches}>
+              <Button variant="default" onClick={() => goTaches(a.task_id)}>
                 Ouvrir
               </Button>
             </div>
@@ -99,7 +99,7 @@ export function Synthese({ role }: { role: string }) {
         <h2 style={{ margin: "0 0 8px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Prévu contre réalisé (soutenance)</h2>
         <p style={{ color: muted }}>Le « prévu » est lu dans la baseline du lundi, pas dans le planning courant.</p>
         <button
-          style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 18px", border: 0, borderRadius: 8, background: C.accent, color: "#FFFFFF", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", height: 44, padding: "0 18px", border: 0, borderRadius: 8, background: C.accent, color: "var(--on-accent)", fontWeight: 600, fontSize: 14, cursor: "pointer" }}
           onClick={async () => {
             const r = await fetch("/api/export");
             if (!r.ok) return;

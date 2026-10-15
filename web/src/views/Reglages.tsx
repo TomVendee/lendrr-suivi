@@ -273,7 +273,7 @@ function ReglagesProjet({ users }: { users: User[] }) {
         </div>
       </section>
 
-      <section aria-label="Effet des réglages" style={{ background: "light-dark(#202326, #2B2F33)", color: C.fond, borderRadius: 12, padding: "18px 24px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+      <section aria-label="Effet des réglages" className="inverse" style={{ background: "var(--surface-2)", color: "var(--text-1)", borderRadius: 12, padding: "18px 24px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: C.navMuted }}>Avec ces réglages</div>
         <div style={{ fontSize: 14 }}>{phrases.join(" ")}</div>
       </section>

@@ -43,19 +43,19 @@ export function Charge() {
     if (w.week < cur) {
       if (w.real === 0) {
         text = mode === "detail" ? `${fmtN(w.planned)} / —` : "non saisi";
-        style = { background: C.warnFond, color: "#7A4F10", border: "1px solid #E2C48F" };
+        style = { background: C.warnFond, color: "var(--warn-text)", border: "1px solid color-mix(in oklch, var(--warn) 45%, transparent)" };
       } else {
         const ecart = w.real - w.planned;
         text = mode === "detail" ? `${fmtN(w.planned)} / ${fmtN(w.real)}` : `${ecart > 0 ? "+" : ""}${fmtN(ecart)}`;
         style = w.real > w.capacity
-          ? { background: C.critFond, color: "#8F1C13", border: "1px solid #E8A39B" }
-          : { background: "#EEF5F0", color: ink };
+          ? { background: C.critFond, color: "var(--crit-text)", border: "1px solid color-mix(in oklch, var(--crit) 45%, transparent)" }
+          : { background: "var(--ok-soft)", color: ink };
       }
     } else {
       text = mode === "detail" ? fmtN(w.planned) : "—";
       style = w.planned > w.capacity
-        ? { background: C.critFond, color: "#8F1C13", border: "1px solid #E8A39B" }
-        : { background: `${box}`, color: "#4A5056" };
+        ? { background: C.critFond, color: "var(--crit-text)", border: "1px solid color-mix(in oklch, var(--crit) 45%, transparent)" }
+        : { background: `${box}`, color: "var(--text-2)" };
     }
     if (w.week === cur) style = { ...style, outline: `2px solid ${C.accent}`, outlineOffset: -2 };
     return { text, style };
@@ -94,20 +94,20 @@ export function Charge() {
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Semaines en surcharge prévue</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: overloads ? C.crit : "#23603C" }}>{overloads}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: overloads ? C.crit : "var(--ok-text)" }}>{overloads}</span>
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Saisies manquantes</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: missing ? "#8A5A12" : "#23603C" }}>{missing}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: missing ? "var(--warn-text)" : "var(--ok-text)" }}>{missing}</span>
         </div>
       </section>
 
       <section aria-labelledby="grille-titre" style={{ ...card, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <h2 id="grille-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Par personne</h2>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, color: "#4A5056" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: C.critFond, border: "1px solid #E8A39B" }} />Au-dessus de la capacité</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: C.warnFond, border: "1px solid #E2C48F" }} />Heures non déclarées</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 13, color: "var(--text-2)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: C.critFond, border: "1px solid color-mix(in oklch, var(--crit) 45%, transparent)" }} />Au-dessus de la capacité</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: C.warnFond, border: "1px solid color-mix(in oklch, var(--warn) 45%, transparent)" }} />Heures non déclarées</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 14, height: 14, borderRadius: 3, background: surf, border: `2px solid ${C.accent}`, boxSizing: "border-box" }} />Semaine en cours</span>
           </div>
         </div>

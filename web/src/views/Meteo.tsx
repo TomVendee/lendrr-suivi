@@ -146,15 +146,15 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
             const delivered = c.total > 0 && c.done === c.total;
             const watch = !delivered && (c.late.length > 0 || c.next_milestone?.risk);
             return (
-              <article key={c.axis} style={{ ...card, background: delivered ? "#E9EBEE" : surf, display: "flex", flexDirection: "column", gap: 12 }}>
+              <article key={c.axis} style={{ ...card, background: delivered ? "var(--sunken)" : surf, display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <h3 style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 700, letterSpacing: "0.04em" }}>{AXIS_LABEL[c.axis] ?? c.axis}</h3>
                   {delivered ? (
                     <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.encre, color: C.fond, fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center" }}>Livrée</span>
                   ) : watch ? (
-                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.warnFond, color: "#8A5A12", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>À surveiller</span>
+                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.warnFond, color: "var(--warn-text)", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>À surveiller</span>
                   ) : (
-                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.okFond, color: "#23603C", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>Au vert</span>
+                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.okFond, color: "var(--ok-text)", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>Au vert</span>
                   )}
                 </div>
                 <span style={{ fontSize: 13, color: muted }}>{axisMembers(c.axis)}</span>
@@ -199,14 +199,14 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
           })}
           {allAlerts.length === 0 && <p style={{ color: C.ok }}>Aucune alerte. Tout est au vert.</p>}
         </section>
-        <section aria-labelledby="jalons-titre" style={{ flex: "2 1 320px", minWidth: 0, background: C.encre, color: C.fond, borderRadius: 12, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <section aria-labelledby="jalons-titre" className="inverse" style={{ flex: "2 1 320px", minWidth: 0, background: "var(--surface-2)", color: "var(--text-1)", borderRadius: 12, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 4 }}>
           <h2 id="jalons-titre" style={{ margin: "0 0 8px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Prochains jalons</h2>
           {milestones.map((j) => {
             const d = daysUntil(j.start);
             const proche = d <= 21;
             return (
-              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderTop: "1px solid #3A3F44" }}>
-                <span aria-hidden="true" style={{ flex: "0 0 auto", width: 12, height: 12, transform: "rotate(45deg)", background: proche ? C.accent : "transparent", border: proche ? "none" : "2px solid #B9BEC4", boxSizing: "border-box" }} />
+              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderTop: "1px solid var(--border-strong)" }}>
+                <span aria-hidden="true" style={{ flex: "0 0 auto", width: 12, height: 12, transform: "rotate(45deg)", background: proche ? C.accent : "transparent", border: proche ? "none" : "2px solid var(--border-strong)", boxSizing: "border-box" }} />
                 <span style={{ flex: 1, minWidth: 0 }}>{j.title}</span>
                 <span style={{ fontFamily: F_MONO, fontSize: 14 }}>{fmtDate(j.start)}</span>
                 <span style={{ width: 64, textAlign: "right", fontFamily: F_MONO, fontSize: 13, color: C.navMuted }}>J-{d}</span>

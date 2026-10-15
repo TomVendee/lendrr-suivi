@@ -49,7 +49,7 @@ export function Graphes({ goCharge }: { goCharge: () => void }) {
       <section aria-label="Indicateurs" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Écart cumulé</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: ecart < 0 ? "#8A5A12" : C.encre }}>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: ecart < 0 ? "var(--warn-text)" : C.encre }}>
             {ecart > 0 ? "+" : ""}{fmtN(ecart)} h
           </span>
           <span style={{ fontSize: 13, color: muted }}>{fmtN(reelCum)} h déclarées pour {fmtN(prevuCum)} h prévues</span>
@@ -68,8 +68,8 @@ export function Graphes({ goCharge }: { goCharge: () => void }) {
         <section aria-labelledby="g-cumul" style={{ ...card, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
             <h2 id="g-cumul" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>Heures cumulées</h2>
-            <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#4A5056" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 18, borderTop: "2px dashed #7A8086" }} />Prévu</span>
+            <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--text-2)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 18, borderTop: "2px dashed var(--text-3)" }} />Prévu</span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 18, height: 3, background: C.accent }} />Déclaré</span>
             </div>
           </div>
@@ -91,7 +91,7 @@ export function Graphes({ goCharge }: { goCharge: () => void }) {
         <section aria-labelledby="g-semaine" style={{ ...card, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
             <h2 id="g-semaine" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>Heures par semaine · équipe</h2>
-            <div style={{ display: "flex", gap: 16, fontSize: 13, color: "#4A5056" }}>
+            <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--text-2)" }}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 2, background: `${line}` }} />Prévu</span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 2, background: C.encre }} />Déclaré</span>
             </div>
@@ -99,7 +99,7 @@ export function Graphes({ goCharge }: { goCharge: () => void }) {
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end", height: 200, paddingTop: 8, borderBottom: `1px solid ${line}` }}>
             {weeks.map((w) => (
               <div key={w.week} style={{ flex: "1 1 0", minWidth: 0, height: "100%", display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", gap: 4 }}>
-                <span style={{ fontFamily: F_MONO, fontSize: 11, color: "#4A5056" }}>{fmtN(w.week <= d.current ? w.real : w.planned)}</span>
+                <span style={{ fontFamily: F_MONO, fontSize: 11, color: "var(--text-2)" }}>{fmtN(w.week <= d.current ? w.real : w.planned)}</span>
                 <div style={{ width: "100%", display: "flex", gap: 3, alignItems: "flex-end", justifyContent: "center" }}>
                   <div style={{ flex: "1 1 0", maxWidth: 16, borderRadius: "2px 2px 0 0", background: `${line}`, height: `${Math.round((w.planned / maxBar) * 170)}px` }} />
                   <div style={{ flex: "1 1 0", maxWidth: 16, borderRadius: "2px 2px 0 0", height: `${Math.round((w.real / maxBar) * 170)}px`, background: w.week === d.current ? C.accent : C.encre }} />

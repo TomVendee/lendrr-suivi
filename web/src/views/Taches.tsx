@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, Modal, NumberInput, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { navigate } from "../router";
 import { api, fmtDate, fmtH, initials, useSettings, useUsers, type Task } from "../api";
 import { AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
 
@@ -20,10 +21,10 @@ interface Revision {
 
 const TYPE_STYLE = (t: string): React.CSSProperties =>
   t === "Modification"
-    ? { background: C.warnFond, color: "#5E3F0C" }
+    ? { background: C.warnFond, color: "var(--warn-text)" }
     : { background: C.accentClair, color: C.accentFonce };
 
-export function Taches({ role }: { role: string }) {
+export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const qc = useQueryClient();
   const [axis, setAxis] = useState("");
   const [status, setStatus] = useState("");
@@ -32,7 +33,9 @@ export function Taches({ role }: { role: string }) {
   const [msg, setMsg] = useState("");
   const [draft, setDraft] = useState<Revision["payload"] | null>(null);
   const [creating, setCreating] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // Fiche ouverte = /taches/:id (lien partageable, retour arrière du navigateur).
+  const detailId = taskId ?? null;
+  const setDetailId = (id: string | null) => navigate(id ? `/taches/${id}` : "/taches");
   const [total, setTotal] = useState<number | "">("");
   const settings = useSettings();
   // File de validation : pilote, validateur ou suppléant (réglages F11).
@@ -122,7 +125,7 @@ export function Taches({ role }: { role: string }) {
         sub={canDecide ? "Une tâche proposée ou modifiée reste invisible pour ses collaborateurs tant que tu ne l'as pas validée." : undefined}
       />
       {msg && (
-        <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: C.okFond, color: "#1C4F31", fontSize: 14, fontWeight: 500 }}>
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: C.okFond, color: "var(--ok-text)", fontSize: 14, fontWeight: 500 }}>
           <span>{msg}</span>
         </div>
       )}
@@ -150,7 +153,7 @@ export function Taches({ role }: { role: string }) {
               );
             })}
             {list.length === 0 && (
-              <div style={{ padding: 20, borderRadius: 10, border: "1px dashed #9AA0A6" }}>
+              <div style={{ padding: 20, borderRadius: 10, border: "1px dashed var(--text-3)" }}>
                 <span style={{ fontWeight: 600 }}>Plus rien à valider.</span>
               </div>
             )}
@@ -231,7 +234,7 @@ export function Taches({ role }: { role: string }) {
                 </div>
               )}
               {nLeads !== 1 && (
-                <span style={{ fontSize: 13, color: "#8F1C13", fontWeight: 500 }}>
+                <span style={{ fontSize: 13, color: "var(--crit-text)", fontWeight: 500 }}>
                   {nLeads === 0 ? "Il faut un pilote pour valider la tâche." : "Une seule personne peut être pilote : passe les autres en appui."}
                 </span>
               )}

@@ -15,7 +15,8 @@ Le développeur est Tom A. (chef de projet de l'équipe). Il écrit en français
 
 1. `docs/cahier-des-besoins.md` : le besoin, les 11 fonctions dans l'ordre, les règles de calcul et d'alerte.
 2. `docs/decisions.md` : la stack et les choix tranchés (D1 à D20), les risques acceptés, les points ouverts.
-3. `docs/maquettes/README.md` puis le `.dc.html` de l'écran concerné : rendu et comportement attendus.
+3. `docs/maquettes/README.md` puis le `.dc.html` de l'écran concerné : structure, contenu et comportement
+   attendus. Le visuel suit la DA « Précision » (D23), pas les maquettes.
 4. `docs/cassiopee-guide-ia.md` : **avant toute action de déploiement**. Il fait foi sur Cassiopée.
 5. `docs/mcp.md` (contrat MCP, D18) et `docs/import-format.md` (format d'import) si on touche à ces parties.
 
@@ -58,7 +59,10 @@ ne passent pas par le proxy Vite : les appeler directement sur `:8080`.
   vers `index.html`, page « socle OK » si le front n'est pas construit ; `/api/*`, `/mcp`, `/health`,
   `/ready` inconnus → 404.
 - `web/src/api.ts` : client `fetch`, types partagés, formats `jj/mm` et heures. Un écran par fichier dans
-  `web/src/views/`. Jetons des maquettes dans `web/src/theme.tsx`, mappés sur Mantine dans `mantine-theme.ts`.
+  `web/src/views/`, choisi par l'URL (`web/src/router.ts` : `/meteo`, `/taches/:id`…, transitions natives).
+- Couleurs, rayons, ombres et durées : **uniquement** les variables de `web/src/styles/tokens.css` (clair et
+  sombre via `light-dark()`), jamais de hex dans les écrans. `web/src/theme.tsx` garde des alias historiques
+  (`C.*`, `muted`…) qui pointent vers ces variables ; `.inverse` force un bloc en sombre.
 - Requêtes sqlx **à l'exécution** (`query` / `query_as`), pas de macros `query!` (D4 : build Docker en
   `SQLX_OFFLINE` sans `.sqlx/`).
 - Cookie `Secure` désactivé si `APP_URL` commence par `http://` (dev local uniquement).
@@ -110,8 +114,9 @@ Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limi
   `/setup`, déploiement « hello » sur Cassiopée) avant la fonction 1, pour que chaque fonction soit livrable.
 - Pour chaque fonction : propose d'abord un plan court (données, routes, écrans, tests) et **attends l'accord
   de Tom A.** ; puis tests du domaine, puis API, puis écran d'après la maquette.
-- **Terminé** = tests verts (`cargo test`), clippy et types sans erreur, l'écran correspond à la maquette sur
-  ordinateur et à 390 px de large, et la fonction a été essayée en local avec des données réalistes.
+- **Terminé** = tests verts (`cargo test`), clippy et types sans erreur, l'écran reprend la structure et le
+  contenu de la maquette dans la DA « Précision » (D23), en clair et en sombre, sur ordinateur et à 390 px de
+  large, utilisable au clavier, et la fonction a été essayée en local avec des données réalistes.
 - Petits commits clairs. N'ajoute rien du « Hors V1 » sans qu'on le demande.
 - Si une règle du cahier est ambiguë, pose la question au lieu d'inventer ; note la réponse dans
   `docs/decisions.md`.

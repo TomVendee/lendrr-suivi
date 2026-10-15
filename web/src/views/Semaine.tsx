@@ -85,25 +85,25 @@ export function Semaine({ me }: { me: Me }) {
     d.tasks.reduce((s, t) => s + (hours[t.id] !== undefined && hours[t.id].trim() !== "" ? parseFloat(hours[t.id].replace(",", ".")) || 0 : t.my_real_hours), 0);
   const reste = d.planned - totalFromInputs;
 
-  const stroke = mobile ? "#F4F5F7" : "#202326";
+  const stroke = mobile ? "var(--bg)" : "var(--text-1)";
   const chevL = (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6" /></svg>);
   const chevR = (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>);
   const weekNav = (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto" }}>
       <button type="button" aria-label="Semaine précédente" onClick={() => setWeek(d.week - 1)}
-        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid var(--border-strong)" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         {chevL}
       </button>
       <span style={{ minWidth: 56, textAlign: "center", fontFamily: F_MONO, fontWeight: 600 }}>S{String(d.week).padStart(2, "0")}</span>
       <button type="button" aria-label="Semaine suivante" onClick={() => setWeek(d.week + 1)}
-        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid #3A3F44" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        style={{ width: 44, height: 44, borderRadius: 8, border: mobile ? "1px solid var(--border-strong)" : `1px solid ${line}`, background: mobile ? "transparent" : surf, color: mobile ? C.fond : C.encre, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         {chevR}
       </button>
     </div>
   );
 
   const hoursPanel = (
-    <section aria-label="Mes heures de la semaine" style={{ background: C.encre, color: C.fond, borderRadius: 12, padding: mobile ? "16px" : "20px 24px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px 40px" }}>
+    <section aria-label="Mes heures de la semaine" className="inverse" style={{ background: "var(--surface-2)", color: "var(--text-1)", borderRadius: 12, padding: mobile ? "16px" : "20px 24px", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px 40px" }}>
       {mobile ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
@@ -112,7 +112,7 @@ export function Semaine({ me }: { me: Me }) {
             </span>
             <span style={{ fontSize: 13, color: C.navMuted }}>avant lun. 12 h</span>
           </div>
-          <div aria-hidden="true" style={{ height: 10, borderRadius: 5, background: "#3A3F44", overflow: "hidden" }}>
+          <div aria-hidden="true" style={{ height: 10, borderRadius: 5, background: "var(--sunken-2)", overflow: "hidden" }}>
             <div style={{ width: `${d.planned ? Math.min(100, (totalFromInputs / d.planned) * 100) : 0}%`, height: "100%", borderRadius: 5, background: C.accent }} />
           </div>
         </div>
@@ -131,7 +131,7 @@ export function Semaine({ me }: { me: Me }) {
             <span style={{ fontFamily: F_MONO, fontSize: 28, fontWeight: 600 }}>{fmtN(d.capacity)} h</span>
           </div>
           <div style={{ flex: "1 1 260px", minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div aria-hidden="true" style={{ position: "relative", height: 12, borderRadius: 6, background: "#3A3F44", overflow: "hidden" }}>
+            <div aria-hidden="true" style={{ position: "relative", height: 12, borderRadius: 6, background: "var(--sunken-2)", overflow: "hidden" }}>
               <div style={{ height: "100%", borderRadius: 6, background: C.accent, width: `${d.planned ? Math.min(100, (totalFromInputs / d.planned) * 100) : 0}%` }} />
             </div>
             <span style={{ fontSize: 13, color: C.navMuted }}>
@@ -204,10 +204,10 @@ export function Semaine({ me }: { me: Me }) {
   if (mobile) {
     return (
       <>
-        <div style={{ background: C.encre, color: C.fond, margin: "-16px -16px 0", padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="inverse" style={{ background: "var(--surface-2)", color: "var(--text-1)", margin: "-16px -16px 0", padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <button type="button" aria-label="Semaine précédente" onClick={() => setWeek(d.week - 1)}
-              style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid #3A3F44", background: "transparent", color: C.fond, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border-strong)", background: "transparent", color: C.fond, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               {chevL}
             </button>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -215,7 +215,7 @@ export function Semaine({ me }: { me: Me }) {
               <span style={{ fontSize: 13, color: C.navMuted }}>{fmtDate(d.monday)} → {fmtDate(d.sunday)}</span>
             </div>
             <button type="button" aria-label="Semaine suivante" onClick={() => setWeek(d.week + 1)}
-              style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid #3A3F44", background: "transparent", color: C.fond, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border-strong)", background: "transparent", color: C.fond, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
               {chevR}
             </button>
           </div>
@@ -226,7 +226,7 @@ export function Semaine({ me }: { me: Me }) {
               </span>
               <span style={{ fontSize: 13, color: C.navMuted }}>avant lun. 12 h</span>
             </div>
-            <div aria-hidden="true" style={{ height: 10, borderRadius: 5, background: "#3A3F44", overflow: "hidden" }}>
+            <div aria-hidden="true" style={{ height: 10, borderRadius: 5, background: "var(--sunken-2)", overflow: "hidden" }}>
               <div style={{ width: `${d.planned ? Math.min(100, (totalFromInputs / d.planned) * 100) : 0}%`, height: "100%", borderRadius: 5, background: C.accent }} />
             </div>
           </div>

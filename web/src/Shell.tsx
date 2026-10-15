@@ -7,9 +7,8 @@ import { IconMoon, IconSun } from "@tabler/icons-react";
 import { api, initials, type Me } from "./api";
 import { C, F_TITRE, ICONS, Icon, faint, ink, line, muted, surf } from "./theme";
 
-export type View =
-  | "semaine" | "taches" | "meteo" | "charge" | "graphes"
-  | "gantt" | "alertes" | "synthese" | "reglages";
+import type { View } from "./router";
+export type { View };
 
 const NAV: { id: View; label: string; icon: keyof typeof ICONS }[] = [
   { id: "semaine", label: "Ma semaine", icon: "semaine" },
@@ -75,13 +74,13 @@ export function Shell({ me, view, setView, children }: {
   if (mobile) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
-        <header style={{ background: C.encre, color: C.fond, padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <header style={{ background: "var(--nav-bg)", color: "var(--text-1)", borderBottom: "1px solid var(--border)", padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 18 }}>Suivi projet</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <ThemeToggle />
               <button onClick={logout} aria-label={me.name}
-                style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "#D0D5DA", color: C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "var(--sunken-2)", color: C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {initials(me.name)}
               </button>
             </div>
@@ -92,7 +91,7 @@ export function Shell({ me, view, setView, children }: {
             </div>
           )}
         </header>
-        <main style={{ flex: "1 1 auto", padding: 16, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
+        <main className="page" style={{ flex: "1 1 auto", padding: 16, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
           {children}
         </main>
         <nav aria-label="Navigation" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", background: surf, borderTop: `1px solid ${line}`, padding: "6px 4px 10px" }}>
@@ -114,7 +113,7 @@ export function Shell({ me, view, setView, children }: {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", alignItems: "stretch", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
-      <nav aria-label="Navigation principale" style={{ flex: "1 1 220px", maxWidth: 260, background: C.encre, color: C.fond, padding: "28px 16px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 28 }}>
+      <nav aria-label="Navigation principale" style={{ flex: "1 1 220px", maxWidth: 260, background: "var(--nav-bg)", color: "var(--text-1)", borderRight: "1px solid var(--border)", padding: "28px 16px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 28 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "0 12px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 22, letterSpacing: "0.01em" }}>Suivi projet</div>
@@ -146,10 +145,10 @@ export function Shell({ me, view, setView, children }: {
                 variant={active ? "filled" : "subtle"}
                 styles={{
                   root: {
-                    minHeight: 44, borderRadius: 8, color: active ? "#FFFFFF" : C.navTxt,
+                    minHeight: 44, borderRadius: 8, color: active ? "var(--text-1)" : "var(--text-2)",
                     background: active ? C.nav : "transparent",
                     fontWeight: active ? 600 : 400,
-                    "&:hover": { background: active ? C.nav : "#2B2F33" },
+                    "&:hover": { background: active ? C.nav : "var(--surface-2)" },
                   },
                 }}
               />
@@ -168,7 +167,7 @@ export function Shell({ me, view, setView, children }: {
             style={{ background: "transparent", border: 0, color: C.navMuted, cursor: "pointer", fontSize: 12 }}>Quitter</button>
         </div>
       </nav>
-      <main style={{ flex: "999 1 560px", minWidth: 0, padding: "32px 40px 48px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 24 }}>
+      <main className="page" style={{ flex: "999 1 560px", minWidth: 0, padding: "32px 40px 48px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 24 }}>
         {children}
       </main>
     </div>

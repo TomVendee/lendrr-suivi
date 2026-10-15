@@ -1,9 +1,10 @@
-/** Racine : login/setup puis Shell + vues (Météo par défaut côté pilote, Ma semaine côté membre). */
-import { useState } from "react";
+/** Racine : login/setup puis Shell + vues, choisies par l'URL (Météo par défaut côté pilote, Ma semaine côté membre). */
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, Card, PasswordInput, TextInput, Title } from "@mantine/core";
 import { api, useMe } from "./api";
-import { Shell, type View } from "./Shell";
+import { Shell } from "./Shell";
+import { navigate, useRoute, type View } from "./router";
 import { C, F_TITRE, muted } from "./theme";
 import { Meteo } from "./views/Meteo";
 import { Semaine } from "./views/Semaine";
@@ -16,22 +17,27 @@ import { Reglages } from "./views/Reglages";
 
 export function App() {
   const me = useMe();
-  // Météo par défaut pour le pilote, Ma semaine pour les membres (cahier).
-  const [view, setView] = useState<View | null>(null);
+  const route = useRoute();
+  const fallback: View | null = me.data ? (me.data.role === "pilot" ? "meteo" : "semaine") : null;
+  // Adresse vide ou inconnue : écran par défaut du rôle, sans entrée d'historique en plus.
+  useEffect(() => {
+    if (fallback && !route.view) navigate(`/${fallback}`, { replace: true });
+  }, [fallback, route.view]);
 
-  if (me.isLoading) return <p style={{ padding: 24 }}>Chargement…</p>;
+  if (me.isLoading) return null;
   if (me.isError || !me.data) return <Login />;
-  const v: View = view ?? (me.data.role === "pilot" ? "meteo" : "semaine");
+  const v: View = route.view ?? fallback!;
+  const go = (to: View) => navigate(`/${to}`);
 
   return (
-    <Shell me={me.data} view={v} setView={setView}>
-      {v === "meteo" && <Meteo goSynthese={() => setView("synthese")} />}
+    <Shell me={me.data} view={v} setView={go}>
+      {v === "meteo" && <Meteo goSynthese={() => go("synthese")} />}
       {v === "semaine" && <Semaine me={me.data} />}
-      {v === "taches" && <Taches role={me.data.role} />}
+      {v === "taches" && <Taches role={me.data.role} taskId={route.id} />}
       {v === "charge" && <Charge />}
-      {v === "graphes" && <Graphes goCharge={() => setView("charge")} />}
+      {v === "graphes" && <Graphes goCharge={() => go("charge")} />}
       {v === "gantt" && <Gantt role={me.data.role} />}
-      {v === "alertes" && <Alertes goTaches={() => setView("taches")} />}
+      {v === "alertes" && <Alertes goTaches={(id) => navigate(id ? `/taches/${id}` : "/taches")} />}
       {v === "synthese" && <Synthese role={me.data.role} />}
       {v === "reglages" && (me.data.role === "pilot" ? <Reglages /> : <p>Réservé au pilote.</p>)}
     </Shell>
@@ -62,7 +68,7 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "light-dark(#F4F5F7, #101114)", padding: 16 }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: 16 }}>
       <div style={{ width: 420, maxWidth: "100%" }}>
         <Title order={1} style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 28 }}>Suivi projet</Title>
         <p style={{ color: muted }}>Projet : LENDRR</p>

@@ -1,0 +1,67 @@
+/*
+ * Jetons « Précision » (D23). Seule source des couleurs, rayons, ombres et durées.
+ * light-dark() suit le color-scheme posé par Mantine (data-mantine-color-scheme).
+ */
+:root {
+  /* Fonds : ardoise bleutée en sombre, jamais un noir teinté. */
+  --bg: light-dark(oklch(0.975 0.004 260), oklch(0.17 0.012 265));
+  --surface-1: light-dark(oklch(1 0 0), oklch(0.205 0.014 265));
+  --surface-2: light-dark(oklch(1 0 0), oklch(0.24 0.016 265));
+  --sunken: light-dark(oklch(0.955 0.005 260), oklch(0.185 0.012 265));
+  --sunken-2: light-dark(oklch(0.925 0.007 260), oklch(0.27 0.016 265));
+  --overlay: light-dark(oklch(0.2 0.02 265 / 0.35), oklch(0.05 0.01 265 / 0.6));
+
+  --text-1: light-dark(oklch(0.22 0.015 265), oklch(0.95 0.005 265));
+  --text-2: light-dark(oklch(0.47 0.015 265), oklch(0.74 0.012 265));
+  --text-3: light-dark(oklch(0.6 0.012 265), oklch(0.58 0.012 265));
+  --border: light-dark(oklch(0.9 0.006 260), oklch(0.29 0.014 265));
+  --border-strong: light-dark(oklch(0.8 0.01 260), oklch(0.37 0.016 265));
+
+  /* Accent unique : indigo. */
+  --accent: light-dark(oklch(0.53 0.2 278), oklch(0.68 0.16 280));
+  --accent-hover: light-dark(oklch(0.47 0.2 278), oklch(0.74 0.14 280));
+  --accent-soft: light-dark(oklch(0.95 0.03 280), oklch(0.3 0.07 280));
+  --accent-text: light-dark(oklch(0.45 0.19 278), oklch(0.82 0.1 280));
+  --on-accent: oklch(1 0 0);
+
+  /* États : réservés au sens, toujours avec icône ou libellé. */
+  --ok: light-dark(oklch(0.6 0.13 155), oklch(0.72 0.14 155));
+  --ok-soft: light-dark(oklch(0.95 0.04 155), oklch(0.28 0.05 155));
+  --ok-text: light-dark(oklch(0.42 0.1 155), oklch(0.82 0.11 155));
+  --warn: light-dark(oklch(0.72 0.15 75), oklch(0.8 0.14 80));
+  --warn-soft: light-dark(oklch(0.96 0.05 85), oklch(0.3 0.06 75));
+  --warn-text: light-dark(oklch(0.48 0.11 65), oklch(0.86 0.11 85));
+  --crit: light-dark(oklch(0.6 0.2 25), oklch(0.68 0.18 25));
+  --crit-soft: light-dark(oklch(0.95 0.03 25), oklch(0.3 0.08 25));
+  --crit-text: light-dark(oklch(0.48 0.18 25), oklch(0.84 0.09 25));
+
+  /* Axes : palette catégorielle validée (dataviz, adjacent, clair et sombre). */
+  --axis-hard: light-dark(#eb6834, #d95926);
+  --axis-soft: light-dark(#2a78d6, #3987e5);
+  --axis-ia: light-dark(#1baf7a, #199e70);
+  --axis-pilotage: light-dark(#4a3aa7, #9085e9);
+  --axis-video: light-dark(#e87ba4, #d55181);
+
+  /* Barre latérale : un cran sous le fond de page. */
+  --nav-bg: light-dark(oklch(0.955 0.005 260), oklch(0.155 0.012 265));
+  --nav-hover: light-dark(oklch(0.925 0.007 260), oklch(0.22 0.014 265));
+  --nav-active: light-dark(oklch(1 0 0), oklch(0.25 0.018 265));
+
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px light-dark(oklch(0.2 0.02 265 / 0.06), oklch(0 0 0 / 0.3));
+  --shadow-2: 0 1px 2px light-dark(oklch(0.2 0.02 265 / 0.05), oklch(0 0 0 / 0.3)),
+    0 8px 24px -8px light-dark(oklch(0.2 0.02 265 / 0.12), oklch(0 0 0 / 0.5));
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
