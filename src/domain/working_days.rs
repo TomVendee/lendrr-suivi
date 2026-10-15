@@ -7,7 +7,7 @@ pub fn today_paris() -> NaiveDate {
         .date_naive()
 }
 
-/// Lundi de S01 : 24/08/2026 (réglable via settings en base ; constante = défaut).
+/// Lundi de S01 : 24/08/2026. Fixe (D21) : les numéros de semaine sont stockés en base.
 pub fn project_start() -> NaiveDate {
     NaiveDate::from_ymd_opt(2026, 8, 24).unwrap()
 }
