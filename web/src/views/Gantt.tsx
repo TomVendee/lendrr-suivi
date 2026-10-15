@@ -123,6 +123,7 @@ export function Gantt({ role }: { role: string }) {
   const moveTask = async (t: GTask, k: number) => {
     if (k === 0) return;
     const start = addWorkdays(t.start, k), end = addWorkdays(t.end, k);
+    await qc.cancelQueries({ queryKey: ["gantt"] });
     const prev = qc.getQueryData<GanttData>(["gantt"]);
     qc.setQueryData<GanttData>(["gantt"], (g) => g && {
       ...g, tasks: g.tasks.map((x) => (x.id === t.id ? { ...x, start, end } : x)),

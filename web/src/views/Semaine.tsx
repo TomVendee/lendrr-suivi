@@ -63,6 +63,8 @@ export function Semaine({ me }: { me: Me }) {
   const saveAll = async () => {
     const entries = Object.entries(hours).filter(([, v]) => v.trim() !== "");
     // Optimiste : les heures saisies s'affichent comme enregistrées, annulé si le serveur refuse.
+    // Annuler d'abord les lectures en cours : une vieille réponse écraserait la saisie.
+    await qc.cancelQueries({ queryKey: key });
     const prev = qc.getQueryData<MyWeek>(key);
     const typed = Object.fromEntries(entries.map(([id, v]) => [id, parseFloat(v.replace(",", "."))]).filter(([, h]) => !Number.isNaN(h)));
     qc.setQueryData<MyWeek>(key, (w) => w && {
@@ -90,6 +92,7 @@ export function Semaine({ me }: { me: Me }) {
   };
   // Optimiste : le statut change tout de suite ; « Annuler » remet l'ancien.
   const setStatus = async (taskId: string, status: string, undoable = true) => {
+    await qc.cancelQueries({ queryKey: key });
     const prev = qc.getQueryData<MyWeek>(key);
     const before = prev?.tasks.find((t) => t.id === taskId)?.status;
     qc.setQueryData<MyWeek>(key, (w) => w && { ...w, tasks: w.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) });

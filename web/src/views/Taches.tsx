@@ -95,6 +95,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const decide = async (approve: boolean) => {
     if (!shown) return;
     // Optimiste : la proposition quitte la file tout de suite, revient si le serveur refuse.
+    await qc.cancelQueries({ queryKey: ["revisions"] });
     const prev = qc.getQueryData<{ revisions: Revision[] }>(["revisions"]);
     qc.setQueryData<{ revisions: Revision[] }>(["revisions"], (r) => r && { revisions: r.revisions.filter((x) => x.id !== shown.id) });
     setConfirm(null);
