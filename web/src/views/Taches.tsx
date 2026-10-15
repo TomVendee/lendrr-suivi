@@ -101,16 +101,22 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
     setConfirm(null);
     try {
       if (draft) await api(`/api/revisions/${shown.id}`, { method: "PUT", body: JSON.stringify(draft) });
-      await api(`/api/revisions/${shown.id}/validate`, { method: "POST", body: JSON.stringify({ approve }) });
+      const r = await api<{ shifted?: string[]; milestones_threatened?: string[] }>(`/api/revisions/${shown.id}/validate`, { method: "POST", body: JSON.stringify({ approve }) });
       setDraft(null);
       setSelRev(null);
       setConfirm(null);
+      const n = r.shifted?.length ?? 0;
+      const ms = (r.milestones_threatened?.length ?? 0) > 0;
       notifications.show({
-        message: approve ? `« ${shown.payload.title} » validée.` : `« ${shown.payload.title} » renvoyée.`,
-        color: approve ? "ok" : "warn",
+        message: approve
+          ? `« ${shown.payload.title} » validée${n ? `, ${n} tâche${n > 1 ? "s suivent" : " suit"} en cascade` : ""}${ms ? ". Un jalon est menacé." : "."}`
+          : `« ${shown.payload.title} » renvoyée.`,
+        color: approve ? (ms ? "crit" : "ok") : "warn",
       });
-      qc.invalidateQueries({ queryKey: ["revisions"] });
-      qc.invalidateQueries({ queryKey: ["tasks"] });
+      // La validation peut publier une tâche et décaler ses successeurs : tout ce qui en dépend se rafraîchit.
+      for (const k of ["revisions", "tasks", "gantt", "gantt-all", "my-week", "meteo", "alerts", "load-now", "load-wide", "graphs"]) {
+        qc.invalidateQueries({ queryKey: [k] });
+      }
     } catch {
       qc.setQueryData(["revisions"], prev);
       notifications.show({ message: "Validation refusée : il faut exactement un pilote.", color: "crit" });

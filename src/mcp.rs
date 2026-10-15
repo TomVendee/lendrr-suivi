@@ -257,12 +257,13 @@ impl SuiviMcp {
             return Ok(text(serde_json::json!({"decision": "rejected"})));
         }
         match crate::routes::revisions::apply_payload(&self.pool, task_id, &payload).await {
-            Ok(new_id) => {
+            Ok(a) => {
                 let _ = sqlx::query("UPDATE task_revisions SET status='validated' WHERE id=$1")
                     .bind(rev)
                     .execute(&self.pool)
                     .await;
-                Ok(text(serde_json::json!({"decision": "validated", "task_id": new_id})))
+                Ok(text(serde_json::json!({"decision": "validated", "task_id": a.id,
+                    "shifted": a.shifted, "milestones_threatened": a.threatened})))
             }
             Err(reason) => Err(ErrorData::invalid_params(reason, None)),
         }

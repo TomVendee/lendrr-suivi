@@ -66,10 +66,11 @@ pub async fn decide(
         return (StatusCode::OK, Json(json!({"ok": true, "decision": "rejected"}))).into_response();
     }
     match apply_payload(&s.pool, task_id, &payload).await {
-        Ok(new_id) => {
+        Ok(a) => {
             let _ = sqlx::query("UPDATE task_revisions SET status='validated' WHERE id=$1")
                 .bind(id).execute(&s.pool).await;
-            (StatusCode::OK, Json(json!({"ok": true, "decision": "validated", "task_id": new_id}))).into_response()
+            (StatusCode::OK, Json(json!({"ok": true, "decision": "validated", "task_id": a.id,
+                "shifted": a.shifted, "milestones_threatened": a.threatened}))).into_response()
         }
         Err(reason) => (StatusCode::BAD_REQUEST, Json(json!({"error": reason}))).into_response(),
     }
@@ -131,11 +132,18 @@ pub async fn update_payload(
 }
 
 /// Applique un payload validé : crée la tâche ou met à jour le publié, en transaction.
+/// Résultat d'une validation : la tâche publiée et la cascade éventuelle (F2).
+pub struct Applied {
+    pub id: uuid::Uuid,
+    pub shifted: Vec<uuid::Uuid>,
+    pub threatened: Vec<uuid::Uuid>,
+}
+
 pub async fn apply_payload(
     pool: &sqlx::PgPool,
     task_id: Option<uuid::Uuid>,
     p: &serde_json::Value,
-) -> Result<uuid::Uuid, &'static str> {
+) -> Result<Applied, &'static str> {
     let title = p.get("title").and_then(|v| v.as_str()).unwrap_or("").trim();
     let axis = p.get("axis_code").and_then(|v| v.as_str()).unwrap_or("");
     let start: chrono::NaiveDate = p
@@ -153,6 +161,15 @@ pub async fn apply_payload(
         return Err("need-exactly-one-lead");
     }
     let mut tx = pool.begin().await.map_err(|_| "db")?;
+    // Ancienne fin, lue avant la mise à jour : si la validation la recule, les successeurs suivent.
+    let old_end: Option<chrono::NaiveDate> = match task_id {
+        Some(t) => sqlx::query_scalar("SELECT end_date FROM tasks WHERE id=$1")
+            .bind(t)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|_| "db")?,
+        None => None,
+    };
     let id = match task_id {
         Some(t) => {
             let n = sqlx::query(
@@ -218,5 +235,10 @@ pub async fn apply_payload(
         .map_err(|_| "bad-assignee")?;
     }
     tx.commit().await.map_err(|_| "db")?;
-    Ok(id)
+    // F2 / D13 : décalage en cascade sans repasser par la validation, comme une modification directe.
+    let (shifted, threatened) = match old_end {
+        Some(old) if end > old => super::deps::cascade_after_move(pool, id, end).await,
+        _ => (vec![], vec![]),
+    };
+    Ok(Applied { id, shifted, threatened })
 }
