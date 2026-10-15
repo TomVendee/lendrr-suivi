@@ -1,222 +1,211 @@
-/** Écran Meteo : reprend la maquette docs/maquettes (structure + jetons), données live. */
+/** Météo du projet : le casier (un compartiment par axe), indicateurs de la semaine, alertes, jalons. */
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button} from "@mantine/core";
+import { Button } from "@mantine/core";
+import { IconArrowRight } from "@tabler/icons-react";
 import { PageSkeleton } from "../skeletons";
-import { api, fmtDate, fmtH, useUsers, type Task } from "../api";
-import { TAG as ALERT_TAG } from "./Alertes";
-import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi, box, line, muted, surf, track } from "../theme";
+import { api, fmtDate, fmtH, type Task } from "../api";
+import { CountUp } from "../motion";
+import { navigate } from "../router";
+import { TAG, alertDetail, type Alert } from "./Alertes";
+import { AXES, PageHead, card, kpi, muted, track } from "../theme";
+import "../styles/meteo.css";
 
 interface MeteoCard {
   axis: string; label: string; total: number; done: number; progress: number;
   late: { title: string }[];
   next_milestone: { id: string; title: string; date: string; risk: string | null } | null;
 }
-interface Alert {
-  kind: string; severity: number; title?: string; user?: string; week?: number;
-  milestone?: string; task_id?: string;
-}
-interface GanttT {
-  id: string; title: string; start: string; end: string; status: string; milestone: boolean;
-}
+interface GanttT { id: string; title: string; start: string; end: string; status: string; milestone: boolean }
+interface Load { current: number; rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }
 
-const AXIS_LABEL: Record<string, string> = { HARD: "HARD", SOFT: "SOFT", IA: "IA", PILOTAGE: "PILOTAGE", VIDEO: "VIDÉO" };
-
-function alertDetail(a: Alert): string {
-  switch (a.kind) {
-    case "milestone-threatened":
-      return a.milestone ? `« ${a.milestone} » menacé.` : `« ${a.title ?? ""} » en retard sur le chemin critique.`;
-    case "blocking-late":
-      return `${a.user ?? ""} · bloque une tâche qui démarre cette semaine.`;
-    case "late":
-      return `${a.user ?? ""} · échéance dépassée.`;
-    case "overload":
-      return `${a.user ?? ""} · semaine S${a.week} au-dessus de la capacité.`;
-    case "missing-hours":
-      return `${a.user ?? ""} · rien saisi pour la S${a.week}.`;
-    case "overrun":
-      return `${a.user ?? ""} · réel au-dessus du prévu.`;
-    case "incomplete":
-      return `Sans pilote ou sans heures prévues.`;
-    default:
-      return "";
+/** Jours ouvrés (lun.-ven.) d'ici à la date, aujourd'hui exclu. */
+function workdaysUntil(iso: string) {
+  const end = new Date(iso + "T00:00:00");
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  let n = 0;
+  while (d < end) {
+    d.setDate(d.getDate() + 1);
+    const w = d.getDay();
+    if (w !== 0 && w !== 6) n++;
   }
+  return n;
 }
 
-const daysUntil = (iso: string) =>
-  Math.round((new Date(iso).getTime() - Date.now()) / 86400000);
+const STATE_LABEL = { ok: "Au vert", watch: "À surveiller", late: "En retard", done: "Livré" } as const;
+type State = keyof typeof STATE_LABEL;
+const pct = (n: number) => `${Math.round(n)} %`;
 
 export function Meteo({ goSynthese }: { goSynthese: () => void }) {
-  const meteo = useQuery({
-    queryKey: ["meteo"], queryFn: () => api<{ cards: MeteoCard[] }>("/api/meteo"),
-  });
-  const alerts = useQuery({
-    queryKey: ["alerts"], queryFn: () => api<{ alerts: Alert[] }>("/api/alerts"),
-  });
-  const gantt = useQuery({
-    queryKey: ["gantt-all"], queryFn: () => api<{ today: string; tasks: GanttT[] }>("/api/gantt"),
-  });
+  const meteo = useQuery({ queryKey: ["meteo"], queryFn: () => api<{ cards: MeteoCard[] }>("/api/meteo") });
+  const alerts = useQuery({ queryKey: ["alerts"], queryFn: () => api<{ alerts: Alert[] }>("/api/alerts") });
+  const gantt = useQuery({ queryKey: ["gantt-all"], queryFn: () => api<{ today: string; tasks: GanttT[] }>("/api/gantt") });
   const tasks = useQuery({ queryKey: ["tasks-all"], queryFn: () => api<Task[]>("/api/tasks") });
-  const users = useUsers();
-  const load = useQuery({
-    queryKey: ["load-now"],
-    queryFn: () => api<{ current: number; rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }>("/api/load"),
-  });
+  const load = useQuery({ queryKey: ["load-now"], queryFn: () => api<Load>("/api/load") });
+  // L'animation d'entrée du casier ne joue qu'une fois par visite de l'écran.
+  const [intro, setIntro] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setIntro(false), 1600);
+    return () => clearTimeout(t);
+  }, []);
 
   if (!meteo.data) return <PageSkeleton kind="meteo" />;
-  const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? "";
-  const milestones = (gantt.data?.tasks ?? [])
-    .filter((t) => t.milestone && t.status !== "done")
-    .sort((a, b) => a.start.localeCompare(b.start));
-  const soutenance = [...(gantt.data?.tasks ?? [])]
-    .filter((t) => t.milestone)
-    .sort((a, b) => b.start.localeCompare(a.start))[0];
+  const cards = meteo.data.cards;
   const allAlerts = alerts.data?.alerts ?? [];
   const nCrit = allAlerts.filter((a) => a.severity >= 3).length;
+  const milestones = (gantt.data?.tasks ?? []).filter((t) => t.milestone && t.status !== "done").sort((a, b) => a.start.localeCompare(b.start));
+  const finale = milestones[milestones.length - 1];
 
-  // Semaine en cours calculée par le serveur (Europe/Paris), pas la 1re semaine de la plage.
-  const curWeek = load.data ? { week: load.data.current } : undefined;
-  const teamPlanned = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.planned ?? 0), 0) ?? 0;
-  const teamCapa = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.capacity ?? 0), 0) ?? 0;
-  const teamReal = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.real ?? 0), 0) ?? 0;
+  const week = load.data?.current;
+  const sum = (k: "planned" | "real" | "capacity") =>
+    load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === week)?.[k] ?? 0), 0) ?? 0;
+  const [planned, real, capacity] = [sum("planned"), sum("real"), sum("capacity")];
+  const monday = week ? new Date(2026, 7, 24 + (week - 1) * 7) : null;
+  const friday = monday ? new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 4) : null;
+  const dm = (d: Date) => `${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-  const axisMembers = (code: string) => {
-    const ids = new Set<string>();
-    (tasks.data ?? []).filter((t) => t.axis_code === code).forEach((t) =>
-      t.assignments.forEach((a) => ids.add(a.user_id)));
-    return [...ids].map(nameOf).filter(Boolean).join(" · ");
-  };
-  const axisNext = (code: string) => {
-    const up = (tasks.data ?? [])
-      .filter((t) => t.axis_code === code && !t.milestone && t.status !== "done")
+  const total = cards.reduce((s, c) => s + c.total, 0);
+  const done = cards.reduce((s, c) => s + c.done, 0);
+  const lateTotal = cards.reduce((s, c) => s + c.late.length, 0);
+  const blocked = (code: string) => (tasks.data ?? []).filter((t) => t.axis_code === code && t.status === "blocked").length;
+  // Retard > tâche bloquée ou jalon menacé > au vert.
+  const stateOf = (c: MeteoCard): State =>
+    c.total > 0 && c.done === c.total ? "done"
+      : c.late.length > 0 ? "late"
+      : blocked(c.axis) > 0 || c.next_milestone?.risk ? "watch" : "ok";
+  const nextOf = (code: string) => {
+    const t = (tasks.data ?? [])
+      .filter((x) => x.axis_code === code && !x.milestone && x.status !== "done")
       .sort((a, b) => a.start_date.localeCompare(b.start_date))[0];
-    return up ? `${up.title} · ${fmtDate(up.start_date)}` : undefined;
+    return t ? { title: t.title, date: t.start_date } : null;
   };
+  const projectState: State = lateTotal > 0 ? "late" : cards.some((c) => stateOf(c) === "watch") ? "watch" : "ok";
 
   return (
     <>
       <PageHead
         title="Météo du projet"
-        sub={curWeek ? `Semaine S${String(curWeek.week).padStart(2, "0")}` : undefined}
-        right={soutenance ? (
+        sub={week && monday && friday ? `Semaine ${week}, du ${dm(monday)} au ${dm(friday)}` : undefined}
+        right={
           <>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 36, padding: "0 14px", borderRadius: 18, background: surf, border: `1px solid ${line}`, fontSize: 14 }}>
-              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent }} />
-              {soutenance.title} dans <strong style={{ fontFamily: F_MONO }}>{daysUntil(soutenance.start)} jours</strong>
-            </span>
-            <Button onClick={goSynthese}>
-              Synthèse S{curWeek ? String(curWeek.week).padStart(2, "0") : ""}
+            {finale && (
+              <span style={{ fontSize: 13, color: muted }}>
+                <strong className="num" style={{ color: "var(--text-1)" }}>{workdaysUntil(finale.start)} jours ouvrés</strong> avant « {finale.title} »
+              </span>
+            )}
+            <Button onClick={goSynthese} rightSection={<IconArrowRight size={16} stroke={1.8} />}>
+              Synthèse de la semaine
             </Button>
           </>
-        ) : undefined}
+        }
       />
-      <section aria-label="Indicateurs de la semaine" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-        <div style={kpi}>
-          <span style={{ fontSize: 13, color: muted }}>Prochain jalon</span>
-          <span style={{ fontWeight: 600, fontSize: 16 }}>{milestones[0]?.title ?? "Aucun"}</span>
-          {milestones[0] && <span style={{ fontFamily: F_MONO, fontSize: 14, color: muted }}>{fmtDate(milestones[0].start)} · dans {daysUntil(milestones[0].start)} jours</span>}
-        </div>
-        <div style={kpi}>
-          <span style={{ fontSize: 13, color: muted }}>Alertes ouvertes</span>
-          <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>{allAlerts.length}</span>
-          <span style={{ fontSize: 14, color: C.crit, fontWeight: 500 }}>{nCrit > 0 ? `dont ${nCrit} critique${nCrit > 1 ? "s" : ""}` : "aucune critique"}</span>
-        </div>
-        <div style={kpi}>
-          <span style={{ fontSize: 13, color: muted }}>Charge équipe</span>
-          <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>
-            {fmtH(teamPlanned)} <span style={{ fontSize: 15, fontWeight: 400, color: muted }}>/ {fmtH(teamCapa)} de capacité</span>
+
+      <section aria-label="Avancement par axe" className="locker" data-intro={intro || undefined}>
+        <div className="cell cell-total" data-state={projectState} style={{ "--fill": total ? done / total : 0, "--i": 0 } as React.CSSProperties}
+          role="group" aria-label="Projet entier">
+          <span className="cell-head">
+            <span className="cell-name">Projet</span>
+            <span className="cell-state"><span className="led" aria-hidden="true" />{STATE_LABEL[projectState]}</span>
           </span>
-          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: `${track}`, overflow: "hidden" }}>
-            <div style={{ width: `${teamCapa ? Math.min(100, (teamPlanned / teamCapa) * 100) : 0}%`, height: "100%", background: teamPlanned > teamCapa ? C.crit : C.ok }} />
-          </div>
+          <span className="cell-big"><CountUp value={total ? (done / total) * 100 : 0} format={pct} /></span>
+          <span className="cell-sub">
+            {done} tâches terminées sur {total}{lateTotal > 0 ? `, ${lateTotal} en retard` : ""}
+          </span>
+          <span className="gauge" aria-hidden="true"><span /></span>
+        </div>
+        {cards.map((c, i) => {
+          const st = stateOf(c);
+          const next = c.next_milestone ? { title: c.next_milestone.title, date: c.next_milestone.date } : nextOf(c.axis);
+          return (
+            <button key={c.axis} className="cell" data-state={st}
+              style={{ "--axis": AXES[c.axis]?.color, "--fill": c.progress, "--i": i + 1 } as React.CSSProperties}
+              onClick={() => navigate(`/taches?axe=${c.axis}`)}
+              aria-label={`${AXES[c.axis]?.label ?? c.label} : ${STATE_LABEL[st]}, ${c.done} tâches terminées sur ${c.total}. Voir les tâches`}>
+              <span className="cell-head">
+                <span className="cell-name">{AXES[c.axis]?.label ?? c.label}</span>
+                <span className="cell-state"><span className="led" aria-hidden="true" />{STATE_LABEL[st]}</span>
+              </span>
+              <span className="cell-big">{c.done}<small> / {c.total}</small></span>
+              <span className="cell-sub">
+                {c.late.length > 0 ? `${c.late.length} en retard`
+                  : blocked(c.axis) > 0 ? `${blocked(c.axis)} bloquée${blocked(c.axis) > 1 ? "s" : ""}`
+                  : c.next_milestone?.risk ? `Jalon ${c.next_milestone.risk}` : "tâches terminées"}
+              </span>
+              <span className="gauge" aria-hidden="true"><span /></span>
+              {next && <span className="cell-next">Ensuite <strong>{next.title}</strong>, {fmtDate(next.date)}</span>}
+            </button>
+          );
+        })}
+      </section>
+
+      <section aria-label="Indicateurs de la semaine" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+        <div style={kpi}>
+          <span style={{ fontSize: 13, color: muted }}>Charge de l'équipe</span>
+          <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em" }}>
+            <CountUp value={planned} format={fmtH} /> <span style={{ fontSize: 14, fontWeight: 400, color: muted }}>sur {fmtH(capacity)}</span>
+          </span>
+          <Bar value={capacity ? planned / capacity : 0} tone={planned > capacity ? "var(--crit)" : "var(--ok)"} />
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Heures déclarées</span>
-          <span style={{ fontFamily: F_MONO, fontWeight: 600, fontSize: 30, lineHeight: 1.1 }}>
-            {fmtH(teamReal)} <span style={{ fontSize: 15, fontWeight: 400, color: muted }}>/ {fmtH(teamPlanned)} prévues</span>
+          <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em" }}>
+            <CountUp value={real} format={fmtH} /> <span style={{ fontSize: 14, fontWeight: 400, color: muted }}>sur {fmtH(planned)} prévues</span>
           </span>
-          <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: `${track}`, overflow: "hidden" }}>
-            <div style={{ width: `${teamPlanned ? Math.min(100, (teamReal / teamPlanned) * 100) : 0}%`, height: "100%", background: C.encre }} />
-          </div>
+          <Bar value={planned ? real / planned : 0} tone="var(--accent)" />
         </div>
+        <button style={{ ...kpi, cursor: "pointer", font: "inherit", textAlign: "left", color: "inherit" }} data-row onClick={() => navigate("/alertes")}>
+          <span style={{ fontSize: 13, color: muted }}>Alertes ouvertes</span>
+          <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.03em" }}><CountUp value={allAlerts.length} format={(n) => String(Math.round(n))} /></span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: nCrit ? "var(--crit-text)" : "var(--ok-text)" }}>
+            {nCrit ? `${nCrit} critique${nCrit > 1 ? "s" : ""}` : "Aucune critique"}
+          </span>
+        </button>
       </section>
 
-      <section aria-labelledby="axes-titre" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <h2 id="axes-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Par axe</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 16 }}>
-          {meteo.data.cards.map((c) => {
-            const delivered = c.total > 0 && c.done === c.total;
-            const watch = !delivered && (c.late.length > 0 || c.next_milestone?.risk);
-            return (
-              <article key={c.axis} style={{ ...card, background: delivered ? "var(--sunken)" : surf, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <h3 style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 700, letterSpacing: "0.04em" }}>{AXIS_LABEL[c.axis] ?? c.axis}</h3>
-                  {delivered ? (
-                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.encre, color: C.fond, fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center" }}>Livrée</span>
-                  ) : watch ? (
-                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.warnFond, color: "var(--warn-text)", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>À surveiller</span>
-                  ) : (
-                    <span style={{ height: 26, padding: "0 10px", borderRadius: 13, background: C.okFond, color: "var(--ok-text)", fontSize: 13, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>Au vert</span>
-                  )}
-                </div>
-                <span style={{ fontSize: 13, color: muted }}>{axisMembers(c.axis)}</span>
-                <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: `${track}`, overflow: "hidden" }}>
-                  <div style={{ width: `${c.progress * 100}%`, height: "100%", background: watch ? C.warn : delivered ? C.encre : C.ok }} />
-                </div>
-                <span style={{ fontFamily: F_MONO, fontSize: 13, color: muted }}>
-                  {c.done} / {c.total} tâches{c.next_milestone ? ` · ${c.next_milestone.risk ? "1 jalon menacé" : "dans les temps"}` : ""}
-                </span>
-                {(axisNext(c.axis) || c.next_milestone) && (
-                  <div style={{ borderTop: `1px solid ${track}`, paddingTop: 10, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ fontSize: 12, color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ensuite</span>
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>
-                      {c.next_milestone ? `◆ ${c.next_milestone.title} · ${fmtDate(c.next_milestone.date)}` : axisNext(c.axis)}
-                    </span>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
-        <section aria-labelledby="alertes-titre" style={{ ...card, flex: "3 1 480px", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, paddingBottom: 8 }}>
-            <h2 id="alertes-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Alertes</h2>
-          </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 16, alignItems: "start" }}>
+        <section aria-labelledby="alertes-titre" style={card}>
+          <h2 id="alertes-titre" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Alertes</h2>
           {allAlerts.slice(0, 4).map((a, i) => {
-            const tag = ALERT_TAG[a.kind] ?? { label: a.kind, style: {} };
+            const tag = TAG[a.kind] ?? { label: a.kind, style: {} };
             return (
-              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start", padding: "14px 0", borderTop: `1px solid ${track}` }}>
-                <span style={{ flex: "0 0 auto", minWidth: 128, height: 26, padding: "0 10px", boxSizing: "border-box", borderRadius: 6, fontSize: 12, fontWeight: 600, display: "inline-flex", alignItems: "center", ...tag.style }}>
-                  {tag.label}
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "12px 0", borderTop: i ? `1px solid ${track}` : "none" }}>
+                <span style={{ flex: "0 0 auto", padding: "2px 8px", borderRadius: "var(--radius-sm)", fontSize: 12, fontWeight: 500, ...tag.style }}>{tag.label}</span>
+                <span style={{ minWidth: 0, fontSize: 14 }}>
+                  <strong style={{ fontWeight: 500 }}>{a.title ?? a.milestone ?? ""}</strong>{" "}
+                  <span style={{ color: muted }}>{alertDetail(a)}</span>
                 </span>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ fontWeight: 600 }}>{a.title ?? a.milestone ?? tag.label}</span>
-                  <span style={{ fontSize: 14, color: muted }}>{alertDetail(a)}</span>
-                </div>
               </div>
             );
           })}
-          {allAlerts.length === 0 && <p style={{ color: C.ok }}>Aucune alerte. Tout est au vert.</p>}
+          {allAlerts.length === 0 && <p style={{ color: "var(--ok-text)", margin: "8px 0 0" }}>Aucune alerte ouverte.</p>}
         </section>
-        <section aria-labelledby="jalons-titre" className="inverse" style={{ flex: "2 1 320px", minWidth: 0, background: "var(--surface-2)", color: "var(--text-1)", borderRadius: 12, padding: "20px 22px", display: "flex", flexDirection: "column", gap: 4 }}>
-          <h2 id="jalons-titre" style={{ margin: "0 0 8px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Prochains jalons</h2>
-          {milestones.map((j) => {
-            const d = daysUntil(j.start);
-            const proche = d <= 21;
-            return (
-              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderTop: "1px solid var(--border-strong)" }}>
-                <span aria-hidden="true" style={{ flex: "0 0 auto", width: 12, height: 12, transform: "rotate(45deg)", background: proche ? C.accent : "transparent", border: proche ? "none" : "2px solid var(--border-strong)", boxSizing: "border-box" }} />
-                <span style={{ flex: 1, minWidth: 0 }}>{j.title}</span>
-                <span style={{ fontFamily: F_MONO, fontSize: 14 }}>{fmtDate(j.start)}</span>
-                <span style={{ width: 64, textAlign: "right", fontFamily: F_MONO, fontSize: 13, color: C.navMuted }}>J-{d}</span>
-              </div>
-            );
-          })}
-          {milestones.length === 0 && <p style={{ color: C.navMuted }}>Aucun jalon à venir.</p>}
+        <section aria-labelledby="jalons-titre" style={card}>
+          <h2 id="jalons-titre" style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>Prochains jalons</h2>
+          <div className="timeline">
+            {milestones.map((j) => {
+              const d = workdaysUntil(j.start);
+              return (
+                <div key={j.id} className="ms" data-near={d <= 15 || undefined}>
+                  <span className="ms-mark" aria-hidden="true" />
+                  <span style={{ minWidth: 0, fontWeight: 500 }}>{j.title}</span>
+                  <span className="num" style={{ fontSize: 13, color: muted }}>{fmtDate(j.start)}</span>
+                  <span className="ms-count">J-{d}</span>
+                </div>
+              );
+            })}
+          </div>
+          {milestones.length === 0 && <p style={{ color: muted, margin: "8px 0 0" }}>Aucun jalon à venir.</p>}
         </section>
       </div>
     </>
+  );
+}
+
+function Bar({ value, tone }: { value: number; tone: string }) {
+  return (
+    <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: "var(--sunken-2)", overflow: "hidden", marginTop: "auto" }}>
+      <div style={{ width: `${Math.min(100, value * 100)}%`, height: "100%", background: tone, borderRadius: 3, transition: "width var(--dur-slow) var(--ease-out)" }} />
+    </div>
   );
 }

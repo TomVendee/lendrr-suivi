@@ -1,0 +1,60 @@
+/* Gantt : barres à la couleur de l'axe, chemin critique cerclé d'accent, liens critiques animés. */
+.gantt-scroll { overflow-x: auto; overscroll-behavior-x: contain; scroll-behavior: smooth; }
+.g-row { display: grid; grid-template-columns: 280px minmax(0, 1fr); box-sizing: border-box; border-top: 1px solid var(--border); }
+.g-label {
+  position: sticky; left: 0; z-index: 3;
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  padding: 0 10px 0 28px;
+  background: var(--surface-1);
+  box-shadow: 1px 0 0 var(--border);
+}
+.g-axis .g-label, .g-axis { background: var(--sunken); }
+.g-track { position: relative; background-image: repeating-linear-gradient(to right, var(--border) 0 1px, transparent 1px var(--col-w)); }
+
+.g-bar {
+  position: absolute; top: 8px; height: 16px; box-sizing: border-box;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--axis) 38%, var(--surface-1));
+  border: 1px solid color-mix(in srgb, var(--axis) 70%, transparent);
+  touch-action: none;
+  transition: box-shadow var(--dur-fast), opacity var(--dur-base), filter var(--dur-fast);
+}
+.g-bar[data-critical] {
+  background: var(--axis);
+  border-color: var(--axis);
+  box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3.5px var(--accent), 0 0 14px color-mix(in oklch, var(--accent) 45%, transparent);
+}
+.g-bar[data-late] {
+  border: 2px solid var(--crit);
+  background-image: repeating-linear-gradient(135deg, color-mix(in oklch, var(--crit) 28%, transparent) 0 4px, transparent 4px 8px);
+}
+.g-bar[data-dim] { opacity: 0.18; }
+.g-bar[data-draggable] { cursor: grab; }
+.g-bar[data-draggable]:active { cursor: grabbing; }
+.g-bar:hover { filter: brightness(1.06) saturate(1.1); }
+.g-bar:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* Aperçu de cascade : les successeurs qui vont reculer clignotent doucement. */
+.g-bar[data-impacted] { outline: 2px dashed var(--warn); outline-offset: 2px; animation: g-pulse 900ms ease-in-out infinite alternate; }
+.g-bar[data-moved] { outline: 2px solid var(--accent); outline-offset: 2px; }
+@keyframes g-pulse { to { outline-color: transparent; } }
+
+.g-ms { position: absolute; top: 10px; width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg); box-sizing: border-box; background: var(--text-1); border-radius: 2px; }
+.g-ms[data-late] { background: var(--crit); }
+
+.g-link { position: absolute; background: var(--text-3); opacity: 0.55; }
+.g-link[data-dim] { opacity: 0.1; }
+.g-link[data-critical] { opacity: 1; background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 10px); animation: g-ants 700ms linear infinite; }
+.g-link[data-critical][data-v] { background: repeating-linear-gradient(180deg, var(--accent) 0 6px, transparent 6px 10px); animation-name: g-ants-v; }
+@keyframes g-ants { to { background-position: 10px 0; } }
+@keyframes g-ants-v { to { background-position: 0 10px; } }
+.g-arrow { position: absolute; width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--text-3); }
+.g-arrow[data-critical] { border-left-color: var(--accent); }
+
+.g-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--crit); }
+.g-today::before {
+  content: "Aujourd'hui"; position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  padding: 1px 6px; border-radius: var(--radius-pill); background: var(--crit); color: var(--on-accent);
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+}
+.g-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--text-2); }
+.g-legend > span { display: inline-flex; align-items: center; gap: 7px; }

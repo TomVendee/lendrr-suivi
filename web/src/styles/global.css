@@ -72,3 +72,6 @@ a:hover { color: var(--accent-hover); }
 [data-row] { transition: border-color var(--dur-fast), box-shadow var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
 [data-row]:hover { border-color: var(--border-strong) !important; box-shadow: var(--shadow-2) !important; }
 [data-row]:active { transform: translateY(1px); }
+
+/* Graphes Mantine : grille et textes discrets, suivent le thème. */
+.mantine-LineChart-root, .mantine-BarChart-root { --chart-grid-color: var(--border); --chart-text-color: var(--text-3); }

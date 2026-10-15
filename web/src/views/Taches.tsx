@@ -26,7 +26,8 @@ const TYPE_STYLE = (t: string): React.CSSProperties =>
 
 export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const qc = useQueryClient();
-  const [axis, setAxis] = useState("");
+  // Filtre d'axe prérempli depuis la Météo (/taches?axe=HARD).
+  const [axis, setAxis] = useState(() => new URLSearchParams(location.search).get("axe") ?? "");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
   const [selRev, setSelRev] = useState<string | null>(null);

@@ -1,0 +1,105 @@
+/* Météo : le casier. Chaque axe est un compartiment ; voyant d'état + libellé, jauge à la couleur de l'axe. */
+.locker {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+  border-radius: calc(var(--radius-lg) + 6px);
+  background: var(--sunken-2);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 color-mix(in oklch, var(--text-1) 6%, transparent);
+}
+@container (max-width: 640px) { .locker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .locker { grid-template-columns: 1fr; } }
+
+.cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 176px;
+  padding: 22px 18px 16px 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base), border-color var(--dur-fast);
+}
+/* Tranche de la porte à la couleur de l'axe (identité, pas état). */
+.cell::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--axis);
+}
+/* Aérations de porte de casier. */
+.cell::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  width: 34px;
+  height: 9px;
+  background: repeating-linear-gradient(to bottom, var(--border-strong) 0 1.5px, transparent 1.5px 3.5px);
+  border-radius: 2px;
+  opacity: 0.8;
+}
+.cell:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--border-strong); }
+.cell:active { transform: translateY(0); }
+
+.cell-head { display: flex; align-items: center; gap: 8px; }
+.cell-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.cell-state { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+
+.led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--led);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--led) 22%, transparent), 0 0 12px color-mix(in oklch, var(--led) 55%, transparent);
+}
+.cell[data-state="ok"] { --led: var(--ok); }
+.cell[data-state="watch"] { --led: var(--warn); }
+.cell[data-state="late"] { --led: var(--crit); }
+.cell[data-state="done"] { --led: var(--text-3); }
+.cell[data-state="done"] .led { box-shadow: none; }
+
+.cell-big { font: 600 clamp(26px, 3cqi + 12px, 34px)/1 var(--font-mono); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.cell-big small { font-size: 0.5em; font-weight: 500; color: var(--text-2); letter-spacing: 0; }
+.cell-sub { font-size: 13px; color: var(--text-2); }
+
+.gauge { height: 6px; border-radius: 3px; background: var(--sunken-2); overflow: hidden; margin-top: auto; }
+.gauge > span { display: block; height: 100%; width: calc(var(--fill) * 100%); background: var(--axis); border-radius: 3px; }
+
+.cell-next { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell-next strong { color: var(--text-1); font-weight: 500; }
+
+/* Compartiment « Projet » : la vue d'ensemble, en surface sombre. */
+.cell-total { --axis: var(--accent); }
+
+/* Moment d'entrée unique : les voyants s'allument en séquence, les jauges montent. */
+@media (prefers-reduced-motion: no-preference) {
+  .locker[data-intro] .led { animation: led-on 420ms var(--ease-out) both; animation-delay: calc(var(--i) * 90ms + 120ms); }
+  .locker[data-intro] .gauge > span { animation: gauge-up 700ms var(--ease-out) both; animation-delay: calc(var(--i) * 90ms + 80ms); }
+}
+@keyframes led-on {
+  0% { opacity: 0.15; box-shadow: none; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.25); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes gauge-up { from { width: 0; } }
+
+.timeline { display: flex; flex-direction: column; }
+.ms { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
+.ms:first-child { border-top: 0; }
+.ms-mark { width: 10px; height: 10px; transform: rotate(45deg); border: 2px solid var(--border-strong); box-sizing: border-box; }
+.ms[data-near] .ms-mark { background: var(--accent); border-color: var(--accent); }
+.ms-count { font: 500 12px/1 var(--font-mono); padding: 4px 7px; border-radius: var(--radius-pill); background: var(--sunken); color: var(--text-2); }
+.ms[data-near] .ms-count { background: var(--accent-soft); color: var(--accent-text); }
