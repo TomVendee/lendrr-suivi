@@ -8,7 +8,12 @@ use serde::Deserialize;
 use serde_json::json;
 
 use super::{AppState, current_user};
-use crate::domain::working_days::{project_week, today_paris, week_bounds};
+use crate::domain::{
+    load::{Allocation, planned_load},
+    synthesis::{WeekFacts, synthesis_text},
+    validation::pending_overdue,
+    working_days::{project_week, today_paris, week_bounds},
+};
 
 #[derive(Deserialize)]
 pub struct WeekQ {
@@ -137,36 +142,39 @@ pub async fn synthesis(
     .into_iter()
     .map(|(t,)| t)
     .collect();
-    let pending: Vec<(chrono::DateTime<chrono::Utc>,)> = sqlx::query_as(
-        "SELECT created_at FROM task_revisions WHERE status='pending'",
+    let pending: Vec<(chrono::NaiveDate,)> = sqlx::query_as(
+        "SELECT (created_at AT TIME ZONE 'Europe/Paris')::date FROM task_revisions WHERE status='pending'",
     )
     .fetch_all(&s.pool)
     .await
     .unwrap_or_default();
-    let old = pending.iter().filter(|(at,)| (*at + chrono::Duration::days(2)) < chrono::Utc::now()).count();
-    let late_titles: Vec<String> = alerts
-        .iter()
-        .filter(|a| a.get("kind").and_then(|v| v.as_str()) == Some("late"))
-        .filter_map(|a| a.get("title").and_then(|v| v.as_str()).map(|x| x.to_string()))
-        .collect();
-    let text = format!(
-        "Semaine S{week:02} ({} → {}). {} tâche(s) terminée(s) : {}. \
-         En retard : {}. Surcharge(s) prévue(s) : {}. Dépassement(s) réel(s) : {}. \
-         Heures non déclarées : {}. Jalon(s) menacé(s) : {}. \
-         En attente de validation : {} (dont {} depuis plus de 2 jours). \
-         [À relire et compléter par le pilote]",
-        wmon.format("%d/%m"),
-        wsun.format("%d/%m"),
-        done_here.len(),
-        if done_here.is_empty() { "aucune".into() } else { done_here.join(", ") },
-        if late_titles.is_empty() { "aucune".into() } else { late_titles.join(", ") },
-        count("overload"),
-        count("overrun"),
-        count("missing-hours"),
-        count("milestone-threatened"),
-        pending.len(),
-        old,
-    );
+    let reminder = super::settings::load(&s.pool).await.reminder_days;
+    let today = today_paris();
+    let names = |kind: &str| -> Vec<String> {
+        alerts
+            .iter()
+            .filter(|a| a.get("kind").and_then(|v| v.as_str()) == Some(kind))
+            .filter_map(|a| a.get("title").and_then(|v| v.as_str()).map(|x| x.to_string()))
+            .collect()
+    };
+    let real_hours: f64 = sqlx::query_scalar("SELECT COALESCE(SUM(hours), 0) FROM time_entries WHERE week = $1")
+        .bind(week)
+        .fetch_one(&s.pool)
+        .await
+        .unwrap_or(0.0);
+    let text = synthesis_text(&WeekFacts {
+        week,
+        monday: wmon,
+        done: done_here,
+        late: names("late"),
+        overloads: count("overload"),
+        overruns: count("overrun"),
+        missing_hours: count("missing-hours"),
+        threatened: count("milestone-threatened"),
+        pending: pending.len(),
+        pending_overdue: pending.iter().filter(|(d,)| pending_overdue(*d, today, reminder)).count(),
+        real_hours,
+    });
     (StatusCode::OK, Json(json!({"week": week, "text": text, "alerts": alerts}))).into_response()
 }
 
@@ -189,42 +197,46 @@ pub async fn export(
             .fetch_optional(&s.pool)
             .await
             .unwrap_or(None);
+    // Réalisé et statut actuels par tâche (le prévu, lui, vient de la photo).
     let reals: Vec<(uuid::Uuid, String, f64)> = sqlx::query_as(
-        "SELECT t.id, t.title, COALESCE(SUM(e.hours),0) FROM tasks t
-         LEFT JOIN time_entries e ON e.task_id = t.id GROUP BY t.id, t.title",
+        "SELECT t.id, t.status, COALESCE(SUM(e.hours),0) FROM tasks t
+         LEFT JOIN time_entries e ON e.task_id = t.id GROUP BY t.id, t.status",
     )
     .fetch_all(&s.pool)
     .await
     .unwrap_or_default();
-    let real_map: std::collections::HashMap<String, f64> =
-        reals.into_iter().map(|(id, _, h)| (id.to_string(), h)).collect();
+    let real_map: std::collections::HashMap<String, (String, f64)> =
+        reals.into_iter().map(|(id, st, h)| (id.to_string(), (st, h))).collect();
     let persons: Vec<(uuid::Uuid, String)> =
         sqlx::query_as("SELECT id, name FROM users ORDER BY name")
             .fetch_all(&s.pool)
             .await
             .unwrap_or_default();
-    // Réalisé par personne : somme time_entries ; prévu : baseline de la semaine.
+    // Réalisé par personne : somme time_entries ; prévu : baseline de la semaine, en total et
+    // « à date » (réparti au prorata des jours ouvrés jusqu'à la semaine, comme le plan de charge).
+    let date = |t: &serde_json::Value, k: &str| t.get(k).and_then(|v| v.as_str()).and_then(|s| s.parse::<chrono::NaiveDate>().ok());
+    let base_tasks: Vec<serde_json::Value> =
+        base.as_ref().and_then(|(snap, _)| snap.get("tasks")).and_then(|v| v.as_array()).cloned().unwrap_or_default();
     let mut persons_out = vec![];
     for (uid, name) in &persons {
-        let planned_base: f64 = base
-            .as_ref()
-            .and_then(|(snap, _)| snap.get("tasks"))
-            .and_then(|v| v.as_array())
-            .map(|ts| {
-                ts.iter()
-                    .flat_map(|t| t.get("assignments").and_then(|v| v.as_array()).cloned().unwrap_or_default())
+        let mine: Vec<Allocation> = base_tasks
+            .iter()
+            .flat_map(|t| {
+                let (s, e) = (date(t, "start"), date(t, "end"));
+                t.get("assignments").and_then(|v| v.as_array()).cloned().unwrap_or_default().into_iter()
                     .filter(|a| a.get("user_id").and_then(|v| v.as_str()) == Some(&uid.to_string()))
-                    .filter_map(|a| a.get("hours").and_then(|v| v.as_f64()))
-                    .sum()
+                    .filter_map(move |a| Some(Allocation { task_start: s?, task_end: e?, hours: a.get("hours")?.as_f64()? }))
             })
-            .unwrap_or(0.0);
+            .collect();
+        let planned_base: f64 = mine.iter().map(|a| a.hours).sum();
+        let planned_to_date: f64 = (1..=week).map(|w| planned_load(&mine, w)).sum();
         let real: f64 = sqlx::query_scalar("SELECT COALESCE(SUM(hours),0) FROM time_entries WHERE user_id=$1")
             .bind(uid)
             .fetch_one(&s.pool)
             .await
             .unwrap_or(0.0);
         persons_out.push(json!({"user_id": uid, "name": name,
-            "planned_baseline": planned_base, "real": real}));
+            "planned_baseline": planned_base, "planned_to_date": planned_to_date, "real": real}));
     }
     (StatusCode::OK, Json(json!({
         "week": week,
@@ -235,8 +247,9 @@ pub async fn export(
                 json!({"id": id, "title": t.get("title"), "axis": t.get("axis"),
                     "planned": t.get("assignments").and_then(|v| v.as_array())
                         .map(|a| a.iter().filter_map(|x| x.get("hours").and_then(|v| v.as_f64())).sum::<f64>()).unwrap_or(0.0),
-                    "real": real_map.get(&id).copied().unwrap_or(0.0),
-                    "status_now": t.get("status")})
+                    "real": real_map.get(&id).map(|(_, h)| *h).unwrap_or(0.0),
+                    "status_at_baseline": t.get("status"),
+                    "status_now": real_map.get(&id).map(|(st, _)| st.clone())})
             }).collect::<Vec<_>>()
         }),
         "persons": persons_out,
