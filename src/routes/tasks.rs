@@ -10,7 +10,7 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{AppState, current_user};
-use crate::domain::validation::{can_validate, valid_axis};
+use crate::domain::validation::{WriteMode, can_validate, valid_axis, write_mode};
 
 /// Colonnes publiées d'une tâche, dans l'ordre des SELECT de ce module.
 type TaskRow = (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool);
@@ -146,6 +146,54 @@ fn check_assignments(a: &[AssignmentIn]) -> Result<(), &'static str> {
     Ok(())
 }
 
+/// Applique les réglages de validation à une écriture (`task_id` = None pour une création).
+/// `None` : publier directement ; sinon la réponse à renvoyer (403 ou 202 + révision).
+async fn gate(
+    pool: &sqlx::PgPool,
+    role: &str,
+    task_id: Option<uuid::Uuid>,
+    input: &TaskIn,
+    uid: uuid::Uuid,
+) -> Option<axum::response::Response> {
+    let st = super::settings::load(pool).await;
+    let mode = write_mode(
+        role == "pilot",
+        task_id.is_none(),
+        st.validation_enabled,
+        st.revalidate_on_edit,
+        st.members_can_propose,
+    );
+    match mode {
+        WriteMode::Publish => None,
+        WriteMode::Forbidden => Some(
+            (StatusCode::FORBIDDEN, Json(json!({"error": "members-cannot-propose"}))).into_response(),
+        ),
+        WriteMode::Propose => {
+            let rev: Result<uuid::Uuid, _> = sqlx::query_scalar(
+                "INSERT INTO task_revisions (task_id, payload, created_by) VALUES ($1, $2, $3) RETURNING id",
+            )
+            .bind(task_id)
+            .bind(json!({
+                "title": input.title, "axis_code": input.axis_code,
+                "start_date": input.start_date, "end_date": input.end_date,
+                "done_criteria": input.done_criteria, "milestone": input.milestone,
+                "assignments": input.assignments.iter().map(|a| json!({
+                    "user_id": a.user_id, "role": a.role, "planned_hours": a.planned_hours
+                })).collect::<Vec<_>>(),
+            }))
+            .bind(uid)
+            .fetch_one(pool)
+            .await;
+            // Proposition non enregistrée : le dire, sinon le membre la croit en attente.
+            Some(match rev {
+                Ok(rev) => (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation", "revision_id": rev})))
+                    .into_response(),
+                Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
+            })
+        }
+    }
+}
+
 /// Référentiel des axes (HARD, SOFT, IA, PILOTAGE, VIDEO). Connecté uniquement.
 pub async fn axes(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
     if current_user(&s.pool, &headers).await.is_err() {
@@ -256,7 +304,7 @@ pub async fn get(
     }
 }
 
-/// Crée une tâche (pilote : publiée ; membre : révision en attente, F11). Exige 1 lead.
+/// Crée une tâche (pilote : publiée ; membre : selon les réglages F11, voir `gate`). Exige 1 lead.
 pub async fn create(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -271,29 +319,9 @@ pub async fn create(
     if let Err(e) = check_assignments(&input.assignments) {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response();
     }
-    // Validation active (défaut) : un membre ne publie pas, il propose (202 + révision).
-    if role != "pilot" {
-        let rev: Result<uuid::Uuid, _> = sqlx::query_scalar(
-            "INSERT INTO task_revisions (task_id, payload, created_by)
-             VALUES (NULL, $1, $2) RETURNING id",
-        )
-        .bind(serde_json::json!({
-            "title": input.title, "axis_code": input.axis_code,
-            "start_date": input.start_date, "end_date": input.end_date,
-            "done_criteria": input.done_criteria, "milestone": input.milestone,
-            "assignments": input.assignments.iter().map(|a| serde_json::json!({
-                "user_id": a.user_id, "role": a.role, "planned_hours": a.planned_hours
-            })).collect::<Vec<_>>(),
-        }))
-        .bind(uid)
-        .fetch_one(&s.pool)
-        .await;
-        // Proposition non enregistrée : le dire, sinon le membre la croit en attente.
-        return match rev {
-            Ok(rev) => (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation", "revision_id": rev})))
-                .into_response(),
-            Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
-        };
+    // F11 : selon les réglages, un membre propose (202 + révision), publie, ou n'a pas le droit.
+    if let Some(r) = gate(&s.pool, &role, None, &input, uid).await {
+        return r;
     }
     let milestone = input.milestone.unwrap_or(false);
     // Tâche + assignations en une transaction : jamais de tâche sans pilote.
@@ -339,7 +367,7 @@ pub async fn create(
     (StatusCode::CREATED, Json(json!({"id": id}))).into_response()
 }
 
-/// Modifie une tâche (pilote : direct + cascade F2 ; membre : révision en attente).
+/// Modifie une tâche (direct + cascade F2 ; membre : selon les réglages F11, voir `gate`).
 pub async fn update(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -355,24 +383,10 @@ pub async fn update(
     if let Err(e) = check_assignments(&input.assignments) {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": e}))).into_response();
     }
-    // F11 : un membre ne modifie pas le publié — sa proposition attend la validation.
-    if role != "pilot" {
-        let _ = sqlx::query(
-            "INSERT INTO task_revisions (task_id, payload, created_by) VALUES ($1, $2, $3)",
-        )
-        .bind(id)
-        .bind(serde_json::json!({
-            "title": input.title, "axis_code": input.axis_code,
-            "start_date": input.start_date, "end_date": input.end_date,
-            "done_criteria": input.done_criteria, "milestone": input.milestone,
-            "assignments": input.assignments.iter().map(|a| serde_json::json!({
-                "user_id": a.user_id, "role": a.role, "planned_hours": a.planned_hours
-            })).collect::<Vec<_>>(),
-        }))
-        .bind(uid)
-        .execute(&s.pool)
-        .await;
-        return (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation"}))).into_response();
+    // F11 : selon les réglages, la modification d'un membre attend la validation
+    // (l'ancienne version reste en vigueur), est publiée, ou est refusée.
+    if let Some(r) = gate(&s.pool, &role, Some(id), &input, uid).await {
+        return r;
     }
     let old: Option<(NaiveDate, NaiveDate)> =
         sqlx::query_as("SELECT start_date, end_date FROM tasks WHERE id=$1")

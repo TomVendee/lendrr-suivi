@@ -12,6 +12,7 @@ pub(crate) mod import;
 pub(crate) mod me;
 pub(crate) mod report;
 pub(crate) mod revisions;
+pub(crate) mod settings;
 pub(crate) mod setup;
 pub(crate) mod stats;
 pub(crate) mod tasks;
@@ -64,6 +65,7 @@ fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
         .route("/api/graphs", get(stats::graphs))
         .route("/api/gantt", get(views::gantt))
         .route("/api/meteo", get(views::meteo))
+        .route("/api/settings", get(settings::get).put(settings::update))
         .route("/api/revisions", get(revisions::list))
         .route("/api/revisions/{id}", put(revisions::update_payload))
         .route("/api/revisions/{id}/validate", post(revisions::decide))

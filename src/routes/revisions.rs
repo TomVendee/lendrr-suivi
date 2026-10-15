@@ -10,13 +10,13 @@ use serde_json::json;
 use super::{AppState, current_user};
 use crate::domain::validation::{can_validate, valid_axis};
 
-/// F11 : file des tâches proposées / modifications en attente (pilote).
+/// F11 : file des tâches proposées / modifications en attente (pilote, validateur, suppléant).
 pub async fn list(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
-    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    if role != "pilot" {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    if !super::settings::load(&s.pool).await.can_decide(uid, &role) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "not-a-validator"}))).into_response();
     }
     type Row = (uuid::Uuid, Option<uuid::Uuid>, serde_json::Value, String, Option<uuid::Uuid>, chrono::DateTime<chrono::Utc>);
     let rows: Vec<Row> =
@@ -45,11 +45,11 @@ pub async fn decide(
     Path(id): Path<uuid::Uuid>,
     Json(input): Json<DecideIn>,
 ) -> impl IntoResponse {
-    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    if role != "pilot" {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    if !super::settings::load(&s.pool).await.can_decide(uid, &role) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "not-a-validator"}))).into_response();
     }
     let row: Option<(Option<uuid::Uuid>, serde_json::Value)> =
         sqlx::query_as("SELECT task_id, payload FROM task_revisions WHERE id=$1 AND status='pending'")
@@ -75,7 +75,7 @@ pub async fn decide(
     }
 }
 
-/// Retouche une révision en attente avant de la valider (pilote).
+/// Retouche une révision en attente avant de la valider (pilote, validateur, suppléant).
 /// Le payload suit le même schéma que la création (titre, axis_code, dates,
 /// done_criteria, milestone, assignments[]) ; refusé si pas exactement 1 lead.
 pub async fn update_payload(
@@ -84,11 +84,11 @@ pub async fn update_payload(
     Path(id): Path<uuid::Uuid>,
     Json(payload): Json<serde_json::Value>,
 ) -> impl IntoResponse {
-    let Ok((_, role)) = current_user(&s.pool, &headers).await else {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    if role != "pilot" {
-        return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
+    if !super::settings::load(&s.pool).await.can_decide(uid, &role) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "not-a-validator"}))).into_response();
     }
     let leads = payload
         .get("assignments")

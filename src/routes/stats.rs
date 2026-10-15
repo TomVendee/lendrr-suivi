@@ -11,9 +11,10 @@ use std::collections::{HashMap, HashSet};
 
 use super::{AppState, current_user};
 use crate::domain::{
-    alerts::{Thresholds, overrun},
+    alerts::overrun,
     cpm::critical_path,
     load::{Allocation, planned_load},
+    validation::pending_overdue,
     working_days::{project_week, today_paris},
 };
 
@@ -101,7 +102,8 @@ pub async fn alerts(State(s): State<AppState>, headers: HeaderMap) -> impl IntoR
 pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) -> Vec<Value> {
     let today = today_paris();
     let cur = project_week(today);
-    let t = Thresholds::default();
+    let st = super::settings::load(pool).await;
+    let t = st.thresholds();
     let mut out: Vec<Value> = vec![];
 
     let users: Vec<(uuid::Uuid, String, f64)> =
@@ -226,10 +228,10 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
         }
         out.push(json!({"kind": "late", "severity": 3, "task_id": id, "title": title,
             "lead": lead, "lead_name": lead.map(|l| name_of(&l))}));
-        // Bloquant : un successeur commence dans < 7 jours.
+        // Bloquant : un successeur commence dans moins de `blocking_days` jours.
         for q in succ_of(id) {
             if let Some((_, _, _, _, qs, qst, _)) = task_of(&q) {
-                if qst != "done" && (*qs - today).num_days() < 7 {
+                if qst != "done" && (*qs - today).num_days() < t.blocking_days {
                     let qlead = assigns.iter().find(|(t, _, r, _)| t == &q && r == "lead").map(|(_, u, _, _)| *u);
                     let qtitle = task_of(&q).map(|(_, x, _, _, _, _, _)| x.clone()).unwrap_or_default();
                     out.push(json!({"kind": "blocking-late", "severity": 3, "task_id": id, "title": title,
@@ -269,6 +271,23 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
             let hours: f64 = assigns.iter().filter(|(t, _, _, _)| t == id).map(|(_, _, _, h)| h).sum();
             if leads != 1 || hours <= 0.0 {
                 out.push(json!({"kind": "incomplete", "severity": 1, "task_id": id, "title": title}));
+            }
+        }
+    }
+
+    // 8. Rappel de validation (réglage `reminder_days`) : pour qui peut valider. Pas de notification (Hors V1).
+    if st.can_decide(uid, role) {
+        let pending: Vec<(uuid::Uuid, Option<uuid::Uuid>, Option<String>, chrono::NaiveDate)> = sqlx::query_as(
+            "SELECT id, task_id, payload->>'title', (created_at AT TIME ZONE 'Europe/Paris')::date
+             FROM task_revisions WHERE status = 'pending'",
+        )
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+        for (rid, tid, title, created) in pending {
+            if pending_overdue(created, today, st.reminder_days) {
+                out.push(json!({"kind": "validation-pending", "severity": 1, "revision_id": rid,
+                    "task_id": tid, "title": title, "since": created}));
             }
         }
     }

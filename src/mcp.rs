@@ -224,16 +224,16 @@ impl SuiviMcp {
         Ok(text(serde_json::json!({"alerts": alerts})))
     }
 
-    /// Valider ou rejeter une tâche en attente (pilote uniquement).
-    #[tool(description = "Valider ou rejeter une tache en attente de validation (pilote)")]
+    /// Valider ou rejeter une tâche en attente (pilote, validateur, suppléant).
+    #[tool(description = "Valider ou rejeter une tache en attente de validation (pilote, validateur ou suppleant)")]
     async fn validate_task(
         &self,
         Parameters(args): Parameters<ValidateTaskArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (_, role) = user_from_parts(&self.pool, &parts).await?;
-        if role != "pilot" {
-            return Err(ErrorData::invalid_params("pilot-only", None));
+        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
+        if !crate::routes::settings::load(&self.pool).await.can_decide(uid, &role) {
+            return Err(ErrorData::invalid_params("not-a-validator", None));
         }
         let rev: uuid::Uuid = args
             .revision_id
