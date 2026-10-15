@@ -34,16 +34,24 @@ pub async fn take_baseline(
         return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
     }
     let week = q.week.unwrap_or_else(|| project_week(today_paris()));
-    let tasks: Vec<(uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool)> =
+    match snapshot_week(&s.pool, week).await {
+        Ok(()) => (StatusCode::OK, Json(json!({"ok": true, "week": week}))).into_response(),
+        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
+    }
+}
+
+/// Fige la semaine : baseline (dates + heures prévues) et sauvegarde JSON complète (D19).
+/// Partagée par le bouton du pilote et la tâche de fond du lundi.
+pub async fn snapshot_week(pool: &sqlx::PgPool, week: i32) -> Result<(), sqlx::Error> {
+    type Row = (uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, bool);
+    let tasks: Vec<Row> =
         sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, milestone FROM tasks")
-            .fetch_all(&s.pool)
-            .await
-            .unwrap_or_default();
+            .fetch_all(pool)
+            .await?;
     let assigns: Vec<(uuid::Uuid, uuid::Uuid, String, f64)> =
         sqlx::query_as("SELECT task_id, user_id, role, planned_hours FROM assignments")
-            .fetch_all(&s.pool)
-            .await
-            .unwrap_or_default();
+            .fetch_all(pool)
+            .await?;
     let snap = json!({
         "week": week, "taken_at": chrono::Utc::now(),
         "tasks": tasks.iter().map(|(id, t, a, sd, ed, st, ms)| json!({
@@ -52,25 +60,54 @@ pub async fn take_baseline(
                 .map(|(_, u, r, h)| json!({"user_id": u, "role": r, "hours": h})).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     });
-    let _ = sqlx::query(
+    sqlx::query(
         "INSERT INTO baselines (week, snapshot) VALUES ($1,$2)
          ON CONFLICT (week) DO UPDATE SET snapshot=EXCLUDED.snapshot, created_at=now()",
     )
     .bind(week)
     .bind(snap.clone())
-    .execute(&s.pool)
-    .await;
+    .execute(pool)
+    .await?;
     // Sauvegarde JSON complète (D19 : en base, pas de S3 en V1).
     let full = json!({"baseline": snap, "exported_at": chrono::Utc::now()});
-    let _ = sqlx::query(
+    sqlx::query(
         "INSERT INTO app_snapshots (week, payload) VALUES ($1,$2)
          ON CONFLICT (week) DO UPDATE SET payload=EXCLUDED.payload, created_at=now()",
     )
     .bind(week)
     .bind(full)
-    .execute(&s.pool)
-    .await;
-    (StatusCode::OK, Json(json!({"ok": true, "week": week}))).into_response()
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Tâche de fond (toutes les heures) : photo de la semaine dès qu'elle manque (en pratique le
+/// lundi, ou au redémarrage si le serveur était arrêté), purge D20 des révisions décidées.
+pub async fn housekeeping(pool: sqlx::PgPool) {
+    let mut tick = tokio::time::interval(std::time::Duration::from_secs(3600));
+    loop {
+        tick.tick().await;
+        let week = project_week(today_paris());
+        let has: Result<bool, _> = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM baselines WHERE week = $1)")
+            .bind(week)
+            .fetch_one(&pool)
+            .await;
+        if let Ok(false) = has {
+            match snapshot_week(&pool, week).await {
+                Ok(()) => tracing::info!("baseline S{week:02} prise automatiquement"),
+                Err(e) => tracing::warn!("baseline S{week:02} : {e}"),
+            }
+        }
+        // D20 : révisions validées ou rejetées, plus de 90 jours (date de proposition). Jamais les heures ni les baselines.
+        if let Err(e) = sqlx::query(
+            "DELETE FROM task_revisions WHERE status <> 'pending' AND created_at < now() - interval '90 days'",
+        )
+        .execute(&pool)
+        .await
+        {
+            tracing::warn!("purge des révisions : {e}");
+        }
+    }
 }
 
 /// F10 : synthèse hebdo en texte à trous (D15 : pas d'IA, le pilote relit).

@@ -26,6 +26,7 @@ async fn main() {
         .await
         .expect("migrations failed");
 
+    tokio::spawn(routes::report::housekeeping(pool.clone()));
     let addr: SocketAddr = format!("0.0.0.0:{}", cfg.port).parse().expect("bad port");
     let app = routes::router(pool, cfg);
     tracing::info!("listening on {addr}");
