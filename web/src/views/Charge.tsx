@@ -1,7 +1,11 @@
 /** Écran Charge : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SegmentedControl, Skeleton} from "@mantine/core";
+import { SegmentedControl} from "@mantine/core";
+import { PageSkeleton } from "../skeletons";
+import { CountUp } from "../motion";
+
+const int = (n: number) => String(Math.round(n));
 import { api, fmtH, fmtN } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, kpi, box, ink, line, muted, surf } from "../theme";
 
@@ -24,7 +28,7 @@ export function Charge() {
   const alerts = useQuery({
     queryKey: ["alerts"], queryFn: () => api<{ alerts: { kind: string }[] }>("/api/alerts"),
   });
-  if (!q.data) return <Skeleton height={320} radius="md" />;
+  if (!q.data) return <PageSkeleton kind="table" />;
   const rows = q.data.rows;
   const weeks = rows[0]?.weeks.map((w) => w.week) ?? [];
   const cur = q.data.current;
@@ -86,19 +90,19 @@ export function Charge() {
       <section aria-label="Résumé" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Capacité de l'équipe</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600 }}>{fmtH(teamCapa)} <span style={{ fontSize: 14, fontWeight: 400, color: muted }}>/ semaine</span></span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600 }}><CountUp value={teamCapa} format={fmtH} /> <span style={{ fontSize: 14, fontWeight: 400, color: muted }}>/ semaine</span></span>
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Reste à faire S{String(cur).padStart(2, "0")} → S{String(weeks[weeks.length - 1]).padStart(2, "0")}</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600 }}>{fmtH(reste)}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600 }}><CountUp value={reste} format={fmtH} /></span>
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Semaines en surcharge prévue</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: overloads ? C.crit : "var(--ok-text)" }}>{overloads}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: overloads ? C.crit : "var(--ok-text)" }}><CountUp value={overloads} format={int} /></span>
         </div>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Saisies manquantes</span>
-          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: missing ? "var(--warn-text)" : "var(--ok-text)" }}>{missing}</span>
+          <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600, color: missing ? "var(--warn-text)" : "var(--ok-text)" }}><CountUp value={missing} format={int} /></span>
         </div>
       </section>
 

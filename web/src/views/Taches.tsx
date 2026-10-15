@@ -85,6 +85,10 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   };
   const decide = async (approve: boolean) => {
     if (!shown) return;
+    // Optimiste : la proposition quitte la file tout de suite, revient si le serveur refuse.
+    const prev = qc.getQueryData<{ revisions: Revision[] }>(["revisions"]);
+    qc.setQueryData<{ revisions: Revision[] }>(["revisions"], (r) => r && { revisions: r.revisions.filter((x) => x.id !== shown.id) });
+    setConfirm(null);
     try {
       if (draft) await api(`/api/revisions/${shown.id}`, { method: "PUT", body: JSON.stringify(draft) });
       await api(`/api/revisions/${shown.id}/validate`, { method: "POST", body: JSON.stringify({ approve }) });
@@ -98,7 +102,8 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
       qc.invalidateQueries({ queryKey: ["revisions"] });
       qc.invalidateQueries({ queryKey: ["tasks"] });
     } catch {
-      notifications.show({ message: "Échec — vérifie le pilote unique.", color: "crit" });
+      qc.setQueryData(["revisions"], prev);
+      notifications.show({ message: "Validation refusée : il faut exactement un pilote.", color: "crit" });
     }
   };
 
@@ -282,7 +287,9 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
               {canCreate && <Button onClick={() => setCreating(true)}>+ Nouvelle tâche</Button>}
             </div>
             {(tasks.data ?? []).map((t) => (
-              <div key={t.id} onClick={() => setDetailId(t.id)}
+              <div key={t.id} data-row role="button" tabIndex={0} aria-label={`Ouvrir ${t.title}`}
+                onClick={() => setDetailId(t.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailId(t.id); } }}
                 style={{ ...card, cursor: "pointer" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
                   <AxisChip code={t.axis_code} />

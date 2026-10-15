@@ -1,11 +1,13 @@
 /** Écran Semaine : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, NumberInput, Select, Skeleton} from "@mantine/core";
+import { Button, NumberInput, Select} from "@mantine/core";
+import { PageSkeleton } from "../skeletons";
 import { notifications } from "@mantine/notifications";
 import { api, fmtDate, fmtH, fmtN, type Me } from "../api";
 import { TAG, alertDetail, type Alert } from "./Alertes";
 import { useIsMobile } from "../Shell";
+import { toastUndo } from "../motion";
 import { AxisChip, C, F_MONO, F_TITRE, StatusPill, box, card, legend, line, muted, surf, track } from "../theme";
 
 interface WeekTask {
@@ -53,12 +55,22 @@ export function Semaine({ me }: { me: Me }) {
     enabled: !!q.data,
   });
 
-  if (!q.data) return (<div style={{ display: "grid", gap: 12 }}><Skeleton height={120} radius="md" /><Skeleton height={220} radius="md" /><Skeleton height={220} radius="md" /></div>);
+  if (!q.data) return <PageSkeleton kind="liste" />;
   const d = q.data;
   const myAlerts = (alerts.data?.alerts ?? []).slice(0, 3);
 
+  const key = ["my-week", week];
   const saveAll = async () => {
     const entries = Object.entries(hours).filter(([, v]) => v.trim() !== "");
+    // Optimiste : les heures saisies s'affichent comme enregistrées, annulé si le serveur refuse.
+    const prev = qc.getQueryData<MyWeek>(key);
+    const typed = Object.fromEntries(entries.map(([id, v]) => [id, parseFloat(v.replace(",", "."))]).filter(([, h]) => !Number.isNaN(h)));
+    qc.setQueryData<MyWeek>(key, (w) => w && {
+      ...w,
+      tasks: w.tasks.map((t) => (t.id in typed ? { ...t, my_real_hours: typed[t.id] as number } : t)),
+      real: w.tasks.reduce((s, t) => s + (t.id in typed ? (typed[t.id] as number) : t.my_real_hours), 0),
+    });
+    setHours({});
     try {
       for (const [taskId, v] of entries) {
         const h = parseFloat(v.replace(",", "."));
@@ -68,17 +80,29 @@ export function Semaine({ me }: { me: Me }) {
           body: JSON.stringify({ task_id: taskId, week: d.week, hours: h }),
         });
       }
-      setHours({});
       setMsg(`Enregistré · ${fmtN(d.real)} h pour S${String(d.week).padStart(2, "0")}`);
       notifications.show({ message: "Heures enregistrées", color: "ok" });
       qc.invalidateQueries({ queryKey: ["my-week"] });
     } catch {
-      notifications.show({ message: "Échec d'enregistrement", color: "crit" });
+      qc.setQueryData(key, prev);
+      notifications.show({ message: "Heures non enregistrées. Vérifie ta connexion et réessaie.", color: "crit" });
     }
   };
-  const setStatus = async (taskId: string, status: string) => {
-    await api(`/api/tasks/${taskId}/status`, { method: "POST", body: JSON.stringify({ status }) });
+  // Optimiste : le statut change tout de suite ; « Annuler » remet l'ancien.
+  const setStatus = async (taskId: string, status: string, undoable = true) => {
+    const prev = qc.getQueryData<MyWeek>(key);
+    const before = prev?.tasks.find((t) => t.id === taskId)?.status;
+    qc.setQueryData<MyWeek>(key, (w) => w && { ...w, tasks: w.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) });
+    try {
+      await api(`/api/tasks/${taskId}/status`, { method: "POST", body: JSON.stringify({ status }) });
+      const label = STATUS_OPTIONS.find(([v]) => v === status)?.[1] ?? status;
+      if (undoable && before && before !== status) toastUndo(`Statut passé à « ${label} »`, () => setStatus(taskId, before, false));
+    } catch {
+      qc.setQueryData(key, prev);
+      notifications.show({ message: "Statut non enregistré. Réessaie.", color: "crit" });
+    }
     qc.invalidateQueries({ queryKey: ["my-week"] });
+    qc.invalidateQueries({ queryKey: ["tasks"] });
   };
 
   const totalFromInputs =

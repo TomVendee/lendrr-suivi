@@ -1,6 +1,7 @@
 /** Écran Graphes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
 import { LineChart } from "@mantine/charts";
+import { PageSkeleton } from "../skeletons";
 import { api, fmtH, fmtN } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, kpi, line, muted, surf, track } from "../theme";
 
@@ -16,7 +17,7 @@ const pad = (w: number) => `S${String(w).padStart(2, "0")}`;
 
 export function Graphes({ goCharge }: { goCharge: () => void }) {
   const q = useQuery({ queryKey: ["graphs"], queryFn: () => api<Graphs>("/api/graphs") });
-  if (!q.data) return <p>Chargement…</p>;
+  if (!q.data) return <PageSkeleton kind="meteo" />;
   const d = q.data;
   const weeks = d.weeks.filter((w) => w.week >= 6 && w.week <= 15);
   const past = weeks.filter((w) => w.week < d.current);

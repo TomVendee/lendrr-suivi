@@ -1,6 +1,7 @@
 /** Écran Meteo : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
-import { Button, Skeleton } from "@mantine/core";
+import { Button} from "@mantine/core";
+import { PageSkeleton } from "../skeletons";
 import { api, fmtDate, fmtH, useUsers, type Task } from "../api";
 import { TAG as ALERT_TAG } from "./Alertes";
 import { C, F_MONO, F_TITRE, PageHead, btnPrimary, card, kpi, box, line, muted, surf, track } from "../theme";
@@ -61,7 +62,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
     queryFn: () => api<{ current: number; rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }>("/api/load"),
   });
 
-  if (!meteo.data) return (<div style={{ display: "grid", gap: 16 }}><Skeleton height={120} radius="md" /><Skeleton height={300} radius="md" /></div>);
+  if (!meteo.data) return <PageSkeleton kind="meteo" />;
   const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? "";
   const milestones = (gantt.data?.tasks ?? [])
     .filter((t) => t.milestone && t.status !== "done")

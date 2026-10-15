@@ -65,3 +65,10 @@ a:hover { color: var(--accent-hover); }
 
 /* Bloc mis en avant (heures de la semaine, jalons, résumé) : toujours sombre, jetons résolus en sombre. */
 .inverse { color-scheme: dark; }
+
+/* Micro-interactions : réponse visible à l'action, jamais décorative. */
+.mantine-Button-root:active:not(:disabled) { transform: scale(0.98); }
+.mantine-Button-root { transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast); }
+[data-row] { transition: border-color var(--dur-fast), box-shadow var(--dur-fast), transform var(--dur-fast) var(--ease-out); }
+[data-row]:hover { border-color: var(--border-strong) !important; box-shadow: var(--shadow-2) !important; }
+[data-row]:active { transform: translateY(1px); }

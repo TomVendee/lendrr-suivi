@@ -1,7 +1,9 @@
 /** Écran Gantt : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Checkbox, SegmentedControl, Skeleton} from "@mantine/core";import { notifications } from "@mantine/notifications";
+import { Checkbox, SegmentedControl} from "@mantine/core";
+import { PageSkeleton } from "../skeletons";
+import { notifications } from "@mantine/notifications";
 import { api, fmtDate } from "../api";
 import { C, F_MONO, F_TITRE, PageHead, card, box, ink, line, muted, surf, track } from "../theme";
 
@@ -24,7 +26,7 @@ export function Gantt({ role }: { role: string }) {
   const [moved, setMoved] = useState<string[]>([]);
   const plotRef = useRef<HTMLDivElement>(null);
   const q = useQuery({ queryKey: ["gantt"], queryFn: () => api<GanttData>("/api/gantt") });
-  if (!q.data) return <Skeleton height={320} radius="md" />;
+  if (!q.data) return <PageSkeleton kind="frise" />;
   const { today, tasks, deps } = q.data;
 
   const dates = tasks.flatMap((t) => [t.start, t.end]);
@@ -93,6 +95,11 @@ export function Gantt({ role }: { role: string }) {
       const dx = Math.round((ev.clientX - x0) / pxPerDay);
       setDrag(null);
       if (dx === 0) return;
+      // Optimiste : la barre reste où on l'a lâchée ; la cascade arrive avec la réponse.
+      const prev = qc.getQueryData<GanttData>(["gantt"]);
+      qc.setQueryData<GanttData>(["gantt"], (g) => g && {
+        ...g, tasks: g.tasks.map((x) => (x.id === t.id ? { ...x, start: addDays(t.start, dx), end: addDays(t.end, dx) } : x)),
+      });
       try {
         // PUT exige la fiche complète : on la recharge puis on repose les dates.
         const full = await api<{ id: string; title: string; axis_code: string; done_criteria: string; milestone: boolean; assignments: { user_id: string; role: string; planned_hours: number }[] }>(`/api/tasks/${t.id}`);
@@ -115,7 +122,8 @@ export function Gantt({ role }: { role: string }) {
         });
         qc.invalidateQueries({ queryKey: ["gantt"] });
       } catch {
-        notifications.show({ message: "Déplacement refusé.", color: "crit" });
+        qc.setQueryData(["gantt"], prev);
+        notifications.show({ message: "Déplacement refusé. La tâche reprend sa place.", color: "crit" });
       }
     };
     window.addEventListener("pointermove", move);

@@ -1,6 +1,7 @@
 /** Écran Alertes : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Button } from "@mantine/core";
+import { PageSkeleton } from "../skeletons";
 import { api, fmtDate } from "../api";
 import { C, F_TITRE, PageHead, card, ink, muted, track } from "../theme";
 
@@ -46,7 +47,7 @@ export function Alertes({ goTaches }: { goTaches: (taskId?: string) => void }) {
   const q = useQuery({
     queryKey: ["alerts"], queryFn: () => api<{ alerts: Alert[] }>("/api/alerts"),
   });
-  if (!q.data) return <p>Chargement…</p>;
+  if (!q.data) return <PageSkeleton kind="liste" />;
   return (
     <>
       <PageHead title="Alertes" sub={`${q.data.alerts.length} ouverte${q.data.alerts.length > 1 ? "s" : ""}, triées par gravité`} />
