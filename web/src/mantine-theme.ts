@@ -32,6 +32,10 @@ export const theme = createTheme({
   radius: { xs: "4px", sm: "6px", md: "10px", lg: "14px", xl: "20px" },
   cursorType: "pointer",
   focusRing: "auto",
+  components: {
+    // Pas de capitales décoratives (D23) : les libellés restent en casse normale.
+    Badge: { styles: { root: { textTransform: "none", fontWeight: 500, letterSpacing: 0 } } },
+  },
 });
 
 /** Surfaces, texte et bordures de Mantine alignés sur nos jetons, en clair comme en sombre. */

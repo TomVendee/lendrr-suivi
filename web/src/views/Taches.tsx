@@ -32,15 +32,17 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const [selRev, setSelRev] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [draft, setDraft] = useState<Revision["payload"] | null>(null);
-  const [creating, setCreating] = useState(false);
   // Fiche ouverte = /taches/:id (lien partageable, retour arrière du navigateur).
-  const detailId = taskId ?? null;
+  const detailId = taskId && taskId !== "nouvelle" ? taskId : null;
   const setDetailId = (id: string | null) => navigate(id ? `/taches/${id}` : "/taches");
   const [total, setTotal] = useState<number | "">("");
   const settings = useSettings();
   // File de validation : pilote, validateur ou suppléant (réglages F11).
   const canDecide = settings.data?.can_decide ?? false;
   const canCreate = role === "pilot" || (settings.data?.members_can_propose ?? true);
+  // Création = /taches/nouvelle (raccourci « c », palette ⌘K).
+  const creating = taskId === "nouvelle" && canCreate;
+  const setCreating = (open: boolean) => navigate(open ? "/taches/nouvelle" : "/taches");
 
   const tasks = useQuery({
     queryKey: ["tasks", axis, status, q],

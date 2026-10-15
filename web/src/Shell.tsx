@@ -1,28 +1,20 @@
+/** Coquille : barre latérale repliable + barre du haut (ordinateur), en-tête + barre du bas (téléphone). */
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Avatar, Menu, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
-  ActionIcon, Avatar, Badge, NavLink, useComputedColorScheme, useMantineColorScheme,
-} from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
-import { api, initials, type Me } from "./api";
-import { C, F_TITRE, ICONS, Icon, faint, ink, line, muted, surf } from "./theme";
-
+  IconChevronRight, IconDots, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
+  IconLogout, IconMoon, IconSearch, IconSun,
+} from "@tabler/icons-react";
+import { api, initials, useSettings, type Me } from "./api";
+import { CommandPalette, MOD, openSearch } from "./CommandPalette";
+import { LockerMark, NAV, navFor, type NavItem } from "./nav";
 import type { View } from "./router";
+import "./styles/shell.css";
+
 export type { View };
 
-const NAV: { id: View; label: string; icon: keyof typeof ICONS }[] = [
-  { id: "semaine", label: "Ma semaine", icon: "semaine" },
-  { id: "taches", label: "Tâches", icon: "taches" },
-  { id: "meteo", label: "Météo", icon: "meteo" },
-  { id: "charge", label: "Plan de charge", icon: "charge" },
-  { id: "graphes", label: "Graphes", icon: "graphes" },
-  { id: "gantt", label: "Gantt", icon: "gantt" },
-  { id: "alertes", label: "Alertes", icon: "alertes" },
-  { id: "synthese", label: "Synthèse et export", icon: "synthese" },
-  { id: "reglages", label: "Réglages", icon: "reglages" },
-];
-
-const MOBILE_TABS: View[] = ["semaine", "meteo", "charge", "gantt"];
+const MOBILE_TABS: View[] = ["semaine", "taches", "meteo", "alertes"];
 
 export function useIsMobile() {
   const [m, setM] = useState(() => window.matchMedia("(max-width: 760px)").matches);
@@ -36,19 +28,30 @@ export function useIsMobile() {
 }
 
 /** Bascule clair/sombre, persistée par Mantine (localStorage). */
-export function ThemeToggle() {
+function ThemeToggle() {
   const { setColorScheme } = useMantineColorScheme();
-  const computed = useComputedColorScheme("light");
+  const dark = useComputedColorScheme("light") === "dark";
+  const label = dark ? "Passer en thème clair" : "Passer en thème sombre";
   return (
-    <ActionIcon
-      variant="subtle" size="lg" radius="md" color="gray"
-      aria-label={computed === "light" ? "Passer en sombre" : "Passer en clair"}
-      title={computed === "light" ? "Passer en sombre" : "Passer en clair"}
-      onClick={() => setColorScheme(computed === "light" ? "dark" : "light")}
-    >
-      {computed === "light" ? <IconMoon size={18} /> : <IconSun size={18} />}
-    </ActionIcon>
+    <Tooltip label={label} openDelay={400}>
+      <button className="icon-btn" aria-label={label} onClick={() => setColorScheme(dark ? "light" : "dark")}>
+        {dark ? <IconSun size={18} stroke={1.6} /> : <IconMoon size={18} stroke={1.6} />}
+      </button>
+    </Tooltip>
   );
+}
+
+/** Mémorise le repli de la barre latérale (préférence locale, sans incidence si le stockage est bloqué). */
+function useCollapsed(): [boolean, () => void] {
+  const read = () => {
+    try { return localStorage.getItem("suivi-sidebar") === "collapsed"; } catch { return false; }
+  };
+  const [c, setC] = useState(read);
+  const toggle = () => setC((v) => {
+    try { localStorage.setItem("suivi-sidebar", v ? "open" : "collapsed"); } catch { /* stockage indisponible */ }
+    return !v;
+  });
+  return [c, toggle];
 }
 
 export function Shell({ me, view, setView, children }: {
@@ -56,120 +59,147 @@ export function Shell({ me, view, setView, children }: {
 }) {
   const mobile = useIsMobile();
   const qc = useQueryClient();
-  const alerts = useQuery({
-    queryKey: ["alerts-count"],
-    queryFn: () => api<{ alerts: unknown[] }>("/api/alerts"),
-  });
+  const [collapsed, toggleCollapsed] = useCollapsed();
+  const settings = useSettings();
+  const canDecide = settings.data?.can_decide ?? false;
+  const alerts = useQuery({ queryKey: ["alerts"], queryFn: () => api<{ alerts: { severity: number }[] }>("/api/alerts") });
   const revs = useQuery({
-    queryKey: ["revs-count"],
+    queryKey: ["revisions"],
     queryFn: () => api<{ revisions: unknown[] }>("/api/revisions"),
+    enabled: canDecide,
     retry: false,
   });
-  const nAlerts = alerts.data?.alerts.length ?? 0;
-  const nRevs = me.role === "pilot" ? (revs.data?.revisions?.length ?? 0) : 0;
-
+  const list = alerts.data?.alerts ?? [];
+  const counts: Partial<Record<View, { n: number; crit?: boolean }>> = {
+    alertes: { n: list.length, crit: list.some((a) => a.severity >= 3) },
+    taches: { n: canDecide ? revs.data?.revisions.length ?? 0 : 0 },
+  };
   const logout = () =>
     api("/api/logout", { method: "POST" }).finally(() => qc.invalidateQueries({ queryKey: ["me"] }));
+  const current = NAV.find((n) => n.id === view);
+
+  const count = (id: View) => {
+    const c = counts[id];
+    return c && c.n > 0 ? (
+      <span className="nav-count" data-tone={c.crit ? "crit" : undefined} aria-label={`${c.n} en attente`}>{c.n}</span>
+    ) : null;
+  };
 
   if (mobile) {
+    const tabs = MOBILE_TABS.map((id) => NAV.find((n) => n.id === id)!);
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
-        <header style={{ background: "var(--nav-bg)", color: "var(--text-1)", borderBottom: "1px solid var(--border)", padding: "20px 16px 18px", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 18 }}>Suivi projet</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <ThemeToggle />
-              <button onClick={logout} aria-label={me.name}
-                style={{ width: 36, height: 36, borderRadius: "50%", border: 0, background: "var(--sunken-2)", color: C.encre, fontFamily: F_TITRE, fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {initials(me.name)}
-              </button>
-            </div>
-          </div>
-          {view === "semaine" ? null : (
-            <div style={{ fontFamily: F_TITRE, fontSize: 22, fontWeight: 700 }}>
-              {NAV.find((n) => n.id === view)?.label}
-            </div>
-          )}
+      <div className="m-shell">
+        <header className="m-top">
+          <LockerMark size={24} />
+          <span className="brand-name">{current?.label ?? "Suivi projet"}</span>
+          <span style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
+            <button className="icon-btn" aria-label="Rechercher" onClick={openSearch}><IconSearch size={18} stroke={1.6} /></button>
+            <ThemeToggle />
+            <UserMenu me={me} onLogout={logout} compact />
+          </span>
         </header>
-        <main className="page" style={{ flex: "1 1 auto", padding: 16, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 24 }}>
-          {children}
-        </main>
-        <nav aria-label="Navigation" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", background: surf, borderTop: `1px solid ${line}`, padding: "6px 4px 10px" }}>
-          {MOBILE_TABS.map((id) => {
-            const item = NAV.find((n) => n.id === id)!;
-            const active = view === id;
-            return (
-              <button key={id} onClick={() => setView(id)}
-                style={{ minHeight: 52, border: 0, background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, fontSize: 12, fontWeight: active ? 600 : 400, color: active ? C.accentFonce : muted, cursor: "pointer" }}>
-                <Icon d={ICONS[item.icon]} size={22} />
-                {item.label === "Ma semaine" ? "Ma semaine" : item.label === "Plan de charge" ? "Charge" : item.label}
-              </button>
-            );
-          })}
+        <main className="m-content page">{children}</main>
+        <nav className="m-tabs" aria-label="Navigation" style={{ "--n": tabs.length } as React.CSSProperties}>
+          {tabs.map((t) => (
+            <button key={t.id} className="m-tab" aria-current={view === t.id ? "page" : undefined} onClick={() => setView(t.id)}>
+              <t.icon size={22} stroke={1.6} />
+              {t.short}
+              {count(t.id)}
+            </button>
+          ))}
         </nav>
+        <CommandPalette me={me} />
       </div>
     );
   }
 
+  const groups: { id: NavItem["group"]; label?: string }[] = [
+    { id: "travail", label: "Mon travail" },
+    { id: "projet", label: "Projet" },
+  ];
+  const item = (n: NavItem) => (
+    <Tooltip key={n.id} label={n.label} position="right" disabled={!collapsed} openDelay={200}>
+      <button className="nav-item" aria-current={view === n.id ? "page" : undefined} onClick={() => setView(n.id)}>
+        <n.icon size={18} stroke={1.6} />
+        <span className="nav-label">{n.label}</span>
+        {count(n.id)}
+      </button>
+    </Tooltip>
+  );
+  const nav = navFor(me.role);
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", alignItems: "stretch", background: faint, color: ink, fontFamily: "'IBM Plex Sans',system-ui,sans-serif", fontSize: 15, lineHeight: 1.45 }}>
-      <nav aria-label="Navigation principale" style={{ flex: "1 1 220px", maxWidth: 260, background: "var(--nav-bg)", color: "var(--text-1)", borderRight: "1px solid var(--border)", padding: "28px 16px 24px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 28 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "0 12px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 22, letterSpacing: "0.01em" }}>Suivi projet</div>
-            <div style={{ fontSize: 13, color: C.navMuted }}>Projet : LENDRR</div>
+    <div className="shell" data-collapsed={collapsed}>
+      <nav className="sidebar" aria-label="Navigation principale">
+        <div className="brand">
+          <LockerMark />
+          <div className="brand-text">
+            <span className="brand-name">Suivi projet</span>
+            <span className="brand-sub">LENDRR</span>
           </div>
-          <ThemeToggle />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAV.map((item) => {
-            const active = view === item.id;
-            return (
-              <NavLink
-                key={item.id}
-                label={
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-                    <span style={{ flex: 1 }}>{item.label}</span>
-                    {item.id === "taches" && me.role === "pilot" && nRevs > 0 && (
-                      <Badge size="sm" circle color="brand" variant="filled">{nRevs}</Badge>
-                    )}
-                    {item.id === "alertes" && nAlerts > 0 && (
-                      <Badge size="sm" circle color="brand" variant="filled">{nAlerts}</Badge>
-                    )}
-                  </span>
-                }
-                leftSection={<span style={{ color: active ? C.bleuClair : "currentColor", display: "flex" }}><Icon d={ICONS[item.icon]} /></span>}
-                active={active}
-                onClick={() => setView(item.id)}
-                color="gray"
-                variant={active ? "filled" : "subtle"}
-                styles={{
-                  root: {
-                    minHeight: 44, borderRadius: 8, color: active ? "var(--text-1)" : "var(--text-2)",
-                    background: active ? C.nav : "transparent",
-                    fontWeight: active ? 600 : 400,
-                    "&:hover": { background: active ? C.nav : "var(--surface-2)" },
-                  },
-                }}
-              />
-            );
-          })}
-        </div>
-        <div style={{ marginTop: "auto", display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 10, background: C.userCard }}>
-          <Avatar color={me.role === "pilot" ? "brand" : "gray"} radius="xl">
-            {initials(me.name)}
-          </Avatar>
-          <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-            <span style={{ fontWeight: 600, fontSize: 14 }}>{me.name}</span>
-            <span style={{ fontSize: 12, color: C.navMuted }}>{me.role === "pilot" ? "Pilote" : "Membre"}</span>
+        {groups.map((g) => (
+          <div key={g.id} className="nav-group">
+            <span className="nav-group-label">{g.label}</span>
+            {nav.filter((n) => n.group === g.id).map(item)}
           </div>
-          <button onClick={logout} title="Se déconnecter"
-            style={{ background: "transparent", border: 0, color: C.navMuted, cursor: "pointer", fontSize: 12 }}>Quitter</button>
+        ))}
+        <div className="sidebar-foot">
+          {nav.filter((n) => n.group === "outil").map(item)}
+          <button className="nav-item" onClick={toggleCollapsed} aria-label={collapsed ? "Déplier la barre latérale" : "Replier la barre latérale"}>
+            {collapsed ? <IconLayoutSidebarLeftExpand size={18} stroke={1.6} /> : <IconLayoutSidebarLeftCollapse size={18} stroke={1.6} />}
+            <span className="nav-label">Replier</span>
+          </button>
+          <UserMenu me={me} onLogout={logout} />
         </div>
       </nav>
-      <main className="page" style={{ flex: "999 1 560px", minWidth: 0, padding: "32px 40px 48px", boxSizing: "border-box", display: "flex", flexDirection: "column", gap: 24 }}>
-        {children}
-      </main>
+      <div className="main">
+        <header className="topbar">
+          <div className="crumbs">
+            <span>LENDRR</span>
+            <IconChevronRight size={14} stroke={1.6} aria-hidden="true" />
+            <strong>{current?.label}</strong>
+          </div>
+          <button className="search-btn" onClick={openSearch}>
+            <IconSearch size={16} stroke={1.6} />
+            Rechercher
+            <span className="kbd">{MOD} K</span>
+          </button>
+          <ThemeToggle />
+        </header>
+        <main className="content page">{children}</main>
+      </div>
+      <CommandPalette me={me} />
     </div>
+  );
+}
+
+function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; compact?: boolean }) {
+  const avatar = <Avatar size={compact ? 30 : 28} radius="xl" color={me.role === "pilot" ? "brand" : "gray"}>{initials(me.name)}</Avatar>;
+  return (
+    <Menu position={compact ? "bottom-end" : "top-start"} width={220} radius="md" shadow="md">
+      <Menu.Target>
+        {compact ? (
+          <button className="icon-btn" aria-label={`Compte de ${me.name}`} style={{ width: 36, height: 36 }}>{avatar}</button>
+        ) : (
+          <button className="nav-item me" aria-label={`Compte de ${me.name}`} style={{ height: "auto" }}>
+            {avatar}
+            <span className="me-text">
+              <span className="me-name">{me.name}</span>
+              <span className="me-role">{me.role === "pilot" ? "Chef de projet" : "Membre"}</span>
+            </span>
+            <IconDots size={16} stroke={1.6} className="nav-label" />
+          </button>
+        )}
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>{me.email}</Menu.Label>
+        <Menu.Item leftSection={<IconKeyboard size={16} stroke={1.6} />}
+          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))}>
+          Raccourcis clavier
+        </Menu.Item>
+        <Menu.Item leftSection={<IconLogout size={16} stroke={1.6} />} onClick={onLogout}>Se déconnecter</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }
