@@ -85,7 +85,7 @@ pub async fn load(
         }
         rows.push(json!({"user_id": uid, "name": name, "weeks": weeks}));
     }
-    (StatusCode::OK, Json(json!({"from": from, "to": to, "rows": rows}))).into_response()
+    (StatusCode::OK, Json(json!({"from": from, "to": to, "current": cur, "rows": rows}))).into_response()
 }
 
 /// F7 : les 7 alertes du cahier, triées par gravité.

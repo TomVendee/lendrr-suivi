@@ -58,7 +58,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
   const users = useUsers();
   const load = useQuery({
     queryKey: ["load-now"],
-    queryFn: () => api<{ rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }>("/api/load"),
+    queryFn: () => api<{ current: number; rows: { weeks: { week: number; planned: number; real: number; capacity: number }[] }[] }>("/api/load"),
   });
 
   if (!meteo.data) return (<div style={{ display: "grid", gap: 16 }}><Skeleton height={120} radius="md" /><Skeleton height={300} radius="md" /></div>);
@@ -72,7 +72,8 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
   const allAlerts = alerts.data?.alerts ?? [];
   const nCrit = allAlerts.filter((a) => a.severity >= 3).length;
 
-  const curWeek = load.data?.rows[0]?.weeks.find((w) => w.planned > 0 || w.real > 0 || w.capacity > 0);
+  // Semaine en cours calculée par le serveur (Europe/Paris), pas la 1re semaine de la plage.
+  const curWeek = load.data ? { week: load.data.current } : undefined;
   const teamPlanned = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.planned ?? 0), 0) ?? 0;
   const teamCapa = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.capacity ?? 0), 0) ?? 0;
   const teamReal = load.data?.rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === curWeek?.week)?.real ?? 0), 0) ?? 0;
