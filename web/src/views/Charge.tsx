@@ -18,7 +18,8 @@ export function Charge() {
   const [mode, setMode] = useState<"detail" | "ecart">("detail");
   const q = useQuery({
     queryKey: ["load-wide"],
-    queryFn: () => api<{ from: number; to: number; rows: Row[] }>("/api/load?from=6&to=15"),
+    // Plage par défaut du serveur : S-2 → S+6 autour de la semaine en cours.
+    queryFn: () => api<{ from: number; to: number; current: number; rows: Row[] }>("/api/load"),
   });
   const alerts = useQuery({
     queryKey: ["alerts"], queryFn: () => api<{ alerts: { kind: string }[] }>("/api/alerts"),
@@ -26,10 +27,10 @@ export function Charge() {
   if (!q.data) return <Skeleton height={320} radius="md" />;
   const rows = q.data.rows;
   const weeks = rows[0]?.weeks.map((w) => w.week) ?? [];
-  // Semaine en cours ≈ première semaine dont une case a du prévu sans réel complet — repli : milieu.
-  const cur = weeks[Math.min(2, weeks.length - 1)] ?? weeks[0];
+  const cur = q.data.current;
 
-  const teamCapa = rows.length * 4;
+  // Capacités réelles de la semaine (défaut par personne, absences comprises).
+  const teamCapa = rows.reduce((s, r) => s + (r.weeks.find((w) => w.week === cur)?.capacity ?? 0), 0);
   const reste = rows.reduce((s, r) => s + r.weeks.filter((w) => w.week >= cur).reduce((a, w) => a + w.planned, 0), 0);
   const overloads = new Set(
     (alerts.data?.alerts ?? []).filter((a) => a.kind === "overload").map((a) => (a as unknown as { week: number }).week)
