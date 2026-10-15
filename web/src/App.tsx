@@ -26,8 +26,11 @@ export function App() {
     if (fallback && !route.view) navigate(`/${fallback}`, { replace: true });
   }, [fallback, route.view]);
 
-  if (me.isLoading) return null;
-  if (me.isError || !me.data) return <Login />;
+  // Rien tant que la session n'a jamais été vérifiée ; ensuite, pas de données = écran de connexion.
+  // (Une nouvelle vérification remet la requête « en attente » : il ne faut pas démonter la saisie.)
+  // Un 401 déconnecte (fin de session, déconnexion) ; une coupure réseau garde l'app affichée.
+  if (!me.isFetched) return null;
+  if (!me.data || me.error?.message === "unauthorized") return <Login />;
   const v: View = route.view ?? fallback!;
   const go = (to: View) => navigate(`/${to}`);
 

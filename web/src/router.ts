@@ -43,6 +43,9 @@ export function navigate(to: string, { replace = false } = {}) {
     notify();
   };
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (replace || reduce || !document.startViewTransition) go();
-  else document.startViewTransition(() => flushSync(go));
+  // Transition seulement quand l'écran change : ouvrir une fiche (/taches → /taches/42) ne doit pas
+  // animer la page, sinon la liste est peinte au-dessus de la fenêtre pendant l'animation.
+  const sameView = parse(to.split("?")[0]).view === parse(location.pathname).view;
+  if (replace || reduce || sameView || !document.startViewTransition || document.visibilityState !== "visible") go();
+  else document.startViewTransition(() => flushSync(go)).ready.catch(() => {});
 }
