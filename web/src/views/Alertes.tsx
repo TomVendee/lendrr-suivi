@@ -7,7 +7,7 @@ import { C, F_TITRE, PageHead, card, ink, muted, track } from "../theme";
 
 export interface Alert {
   kind: string; severity: number; title?: string; milestone?: string;
-  user?: string; week?: number; task_id?: string; since?: string;
+  user?: string; week?: number; task_id?: string; since?: string; succ_title?: string;
 }
 
 export const TAG: Record<string, { label: string; style: React.CSSProperties }> = {
@@ -28,7 +28,7 @@ export function alertDetail(a: Alert): string {  switch (a.kind) {
     case "milestone-threatened":
       return a.milestone ? `« ${a.milestone} » menacé.` : `« ${a.title ?? ""} » en retard sur le chemin critique.`;
     case "blocking-late":
-      return `${who(a)}bloque une tâche qui démarre bientôt.`;
+      return a.succ_title ? `bloque « ${a.succ_title} », qui démarre bientôt.` : "bloque une tâche qui démarre bientôt.";
     case "late":
       return `${who(a)}échéance dépassée, tâche non terminée.`;
     case "overload":

@@ -6,12 +6,11 @@ use axum::{
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
-use chrono::{Datelike, Timelike};
 use std::collections::{HashMap, HashSet};
 
 use super::{AppState, current_user};
 use crate::domain::{
-    alerts::overrun,
+    alerts::{blocking, incomplete, late, milestone_at_risk, missing_hours_due, overloaded, overrun},
     cpm::critical_path,
     load::{Allocation, planned_load},
     validation::pending_overdue,
@@ -157,7 +156,7 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
             .fetch_one(pool)
             .await
             .unwrap_or(*defcap);
-            if planned_load(&my, w) > cap {
+            if overloaded(planned_load(&my, w), cap) {
                 out.push(json!({"kind": "overload", "severity": 2, "user_id": id,
                     "user": name_of(id), "week": w,
                     "planned": planned_load(&my, w), "capacity": cap}));
@@ -171,14 +170,11 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
         .fetch_one(pool)
         .await
         .unwrap_or(0.0);
-        // Lundi 12h Paris, semaine écoulée sans saisie (V1 : évalué à la lecture).
-        if cur > 1 && last_real == 0.0 {
-            let now = chrono::Utc::now().with_timezone(&chrono_tz::Europe::Paris);
-            let is_monday = now.date_naive() == today && today.weekday().number_from_monday() == 1;
-            if !is_monday || now.hour() >= 12 {
-                out.push(json!({"kind": "missing-hours", "severity": 1, "user_id": id,
-                    "user": name_of(id), "week": cur - 1}));
-            }
+        // Lundi 12 h Paris, semaine écoulée sans saisie (évalué à la lecture).
+        let now = chrono::Utc::now().with_timezone(&chrono_tz::Europe::Paris).naive_local();
+        if cur > 1 && last_real == 0.0 && missing_hours_due(now) {
+            out.push(json!({"kind": "missing-hours", "severity": 1, "user_id": id,
+                "user": name_of(id), "week": cur - 1}));
         }
     }
 
@@ -216,33 +212,34 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
     };
     let task_of = |id: &uuid::Uuid| tasks.iter().find(|(i, _, _, _, _, _, _)| i == id);
 
+    let lead_of = |id: &uuid::Uuid| assigns.iter().find(|(t, _, r, _)| t == id && r == "lead").map(|(_, u, _, _)| *u);
     for (id, title, _, _, e, st, ms) in &tasks {
-        if *ms || st == "done" || *e >= today {
+        if !late(*e, st == "done", *ms, today) {
             continue;
+        }
+        let lead = lead_of(id);
+        // Jalon menacé : tâche critique en retard → toute l'équipe.
+        if crit.contains(&id.to_string()) {
+            out.push(json!({"kind": "milestone-threatened", "severity": 3,
+                "task_id": id, "title": title, "reason": "critical-late"}));
         }
         // En retard : pilote de la tâche + pilote projet.
-        let lead = assigns.iter().find(|(t, _, r, _)| t == id && r == "lead").map(|(_, u, _, _)| *u);
-        let visible = role == "pilot" || lead == Some(uid);
-        if !visible {
-            continue;
+        if role == "pilot" || lead == Some(uid) {
+            out.push(json!({"kind": "late", "severity": 3, "task_id": id, "title": title,
+                "lead": lead, "lead_name": lead.map(|l| name_of(&l))}));
         }
-        out.push(json!({"kind": "late", "severity": 3, "task_id": id, "title": title,
-            "lead": lead, "lead_name": lead.map(|l| name_of(&l))}));
-        // Bloquant : un successeur commence dans moins de `blocking_days` jours.
+        // Bloquant : les deux pilotes concernés + pilote projet.
         for q in succ_of(id) {
-            if let Some((_, _, _, _, qs, qst, _)) = task_of(&q) {
-                if qst != "done" && (*qs - today).num_days() < t.blocking_days {
-                    let qlead = assigns.iter().find(|(t, _, r, _)| t == &q && r == "lead").map(|(_, u, _, _)| *u);
+            // (id, titre, axe, début, fin, statut, jalon) : le successeur bloqué compte à partir de son début.
+            if let Some((_, _, _, qs, _, qst, _)) = task_of(&q) {
+                let qlead = lead_of(&q);
+                let mine = role == "pilot" || lead == Some(uid) || qlead == Some(uid);
+                if mine && blocking(*qs, qst == "done", today, &t) {
                     let qtitle = task_of(&q).map(|(_, x, _, _, _, _, _)| x.clone()).unwrap_or_default();
                     out.push(json!({"kind": "blocking-late", "severity": 3, "task_id": id, "title": title,
                         "succ_id": q, "succ_title": qtitle, "succ_lead": qlead}));
                 }
             }
-        }
-        // Jalon menacé : tâche critique en retard → toute l'équipe.
-        if crit.contains(&id.to_string()) {
-            out.push(json!({"kind": "milestone-threatened", "severity": 3,
-                "task_id": id, "title": title, "reason": "critical-late"}));
         }
     }
     // Marge vers jalon négative : un prédécesseur non terminé finit après le jalon.
@@ -254,7 +251,7 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
             dep_rows.iter().filter(|(_, q)| q == mid).map(|(p, _)| *p).collect();
         for p in preds {
             if let Some((_, ptitle, _, _, pe, pst, _)) = task_of(&p) {
-                if pst != "done" && *pe >= *me {
+                if milestone_at_risk(*pe, pst == "done", *me) {
                     out.push(json!({"kind": "milestone-threatened", "severity": 3,
                         "milestone_id": mid, "milestone": mtitle,
                         "reason": "negative-margin", "task_title": ptitle}));
@@ -269,7 +266,7 @@ pub async fn compute_alerts(pool: &sqlx::PgPool, uid: uuid::Uuid, role: &str) ->
         for (id, title, _, _, _, _, _) in &tasks {
             let leads = assigns.iter().filter(|(t, _, r, _)| t == id && r == "lead").count();
             let hours: f64 = assigns.iter().filter(|(t, _, _, _)| t == id).map(|(_, _, _, h)| h).sum();
-            if leads != 1 || hours <= 0.0 {
+            if incomplete(leads, hours) {
                 out.push(json!({"kind": "incomplete", "severity": 1, "task_id": id, "title": title}));
             }
         }
