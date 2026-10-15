@@ -52,7 +52,7 @@ export function CommandPalette({ me }: { me: Me }) {
   const canCreate = me.role === "pilot" || (settings.data?.members_can_propose ?? true);
   const { setColorScheme } = useMantineColorScheme();
   const scheme = useComputedColorScheme("light");
-  const tasks = useQuery({ queryKey: ["tasks-all"], queryFn: () => api<Task[]>("/api/tasks") });
+  const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => api<Task[]>("/api/tasks") });
   useShortcuts(me.role, canCreate, () => setHelp(true));
 
   const nav = navFor(me.role);

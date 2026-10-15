@@ -1,12 +1,17 @@
 /** Écran Taches : reprend la maquette docs/maquettes (structure + jetons), données live. */
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, Checkbox, Modal, NumberInput, Select, TextInput, Textarea } from "@mantine/core";
+import { Button, Checkbox, Modal, NumberInput, SegmentedControl, Select, TextInput, Textarea } from "@mantine/core";
+import { IconPlus, IconSearch } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { navigate } from "../router";
 import { Sheet } from "../Shell";
 import { api, fmtDate, fmtH, initials, useSettings, useUsers, type Task } from "../api";
-import { AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
+import { AXES, AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
+import "../styles/taches.css";
+
+const AXIS_ORDER = ["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"] as const;
+const STATUS_LABEL: Record<string, string> = { todo: "À faire", in_progress: "En cours", blocked: "Bloquée", done: "Terminée" };
 
 interface Revision {
   id: string;
@@ -31,6 +36,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const [axis, setAxis] = useState(() => new URLSearchParams(location.search).get("axe") ?? "");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
+  const [person, setPerson] = useState<string | null>(null);
   const [selRev, setSelRev] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [draft, setDraft] = useState<Revision["payload"] | null>(null);
@@ -46,17 +52,8 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   const creating = taskId === "nouvelle" && canCreate;
   const setCreating = (open: boolean) => navigate(open ? "/taches/nouvelle" : "/taches");
 
-  const tasks = useQuery({
-    queryKey: ["tasks", axis, status, q],
-    queryFn: () => {
-      const p = new URLSearchParams();
-      if (axis) p.set("axis", axis);
-      if (status) p.set("status", status);
-      if (q.trim()) p.set("q", q.trim());
-      const s = p.toString();
-      return api<Task[]>(`/api/tasks${s ? `?${s}` : ""}`);
-    },
-  });
+  // Toutes les tâches (≤ 500), filtrées ici : même cache que la Météo et la palette ⌘K.
+  const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => api<Task[]>("/api/tasks") });
   const revs = useQuery({
     queryKey: ["revisions"],
     queryFn: () => api<{ revisions: Revision[] }>("/api/revisions"),
@@ -64,6 +61,16 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
     retry: false,
   });
   const users = useUsers();
+  // Filtres côté client : recherche sans accents, axe, personne ; le statut s'applique en dernier (compteurs).
+  const norm = (x: string) => x.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  const today = new Date().toLocaleDateString("sv-SE");
+  const base = (tasks.data ?? []).filter((t) =>
+    (!axis || t.axis_code === axis)
+    && (!person || t.assignments.some((x) => x.user_id === person))
+    && (!q.trim() || norm(t.title).includes(norm(q.trim()))));
+  const visible = base
+    .filter((t) => !status || t.status === status)
+    .sort((x, y) => Number(x.status === "done") - Number(y.status === "done") || x.start_date.localeCompare(y.start_date));
   const nameOf = (id: string) => users.data?.find((u) => u.id === id)?.name ?? id.slice(0, 8);
 
   const list = revs.data?.revisions ?? [];
@@ -130,8 +137,14 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
   return (
     <>
       <PageHead
-        title={canDecide ? "Tâches à valider" : "Tâches"}
-        sub={canDecide ? "Une tâche proposée ou modifiée reste invisible pour ses collaborateurs tant que tu ne l'as pas validée." : undefined}
+        title="Tâches"
+        sub={canDecide && list.length > 0
+          ? `${list.length} proposition${list.length > 1 ? "s" : ""} à valider : elles restent invisibles pour les collaborateurs tant qu'elles ne sont pas validées.`
+          : tasks.data ? (() => {
+            const ms = tasks.data.filter((t) => t.milestone).length;
+            const done = tasks.data.filter((t) => !t.milestone && t.status === "done").length;
+            return `${tasks.data.length - ms} tâches et ${ms} jalon${ms > 1 ? "s" : ""}, ${done} tâche${done > 1 ? "s" : ""} terminée${done > 1 ? "s" : ""}`;
+          })() : undefined}
       />
       {msg && (
         <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderRadius: 10, background: C.okFond, color: "var(--ok-text)", fontSize: 14, fontWeight: 500 }}>
@@ -139,7 +152,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
-        {canDecide && (
+        {canDecide && list.length > 0 && (
           <section aria-labelledby="file-titre" style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             <h2 id="file-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>En attente ({list.length})</h2>
             {list.map((r) => {
@@ -156,7 +169,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
                   </span>
                   <span style={{ fontWeight: 600, fontSize: 15 }}>{r.payload.title}</span>
                   <span style={{ fontSize: 13, color: muted }}>
-                    Proposée par {r.created_by ? nameOf(r.created_by) : "—"}, {r.payload.assignments.length} collaborateur{r.payload.assignments.length > 1 ? "s" : ""}
+                    Proposée par {r.created_by ? nameOf(r.created_by) : "—"}, {(r.payload.assignments?.length ?? 0)} collaborateur{(r.payload.assignments?.length ?? 0) > 1 ? "s" : ""}
                   </span>
                 </button>
               );
@@ -269,45 +282,82 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
             </Modal>
           </section>
         ) : (
-          <section style={{ flex: "2 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <TextInput placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)}
-                style={{ flex: "1 1 180px" }} />
-              <Select
-                value={axis} onChange={(v) => setAxis(v ?? "")} clearable placeholder="Tous les axes"
-                data={["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"]} w={170}
-              />
-              <Select
-                value={status} onChange={(v) => setStatus(v ?? "")} clearable placeholder="Tous les statuts"
-                data={[
-                  { value: "todo", label: "À faire" },
-                  { value: "in_progress", label: "En cours" },
-                  { value: "blocked", label: "Bloquée" },
-                  { value: "done", label: "Terminée" },
-                ]} w={170}
-              />
-              {canCreate && <Button onClick={() => setCreating(true)}>+ Nouvelle tâche</Button>}
+          <section aria-label="Liste des tâches" style={{ flex: "2 1 520px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="t-filters">
+              <TextInput placeholder="Rechercher une tâche" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher une tâche"
+                leftSection={<IconSearch size={16} stroke={1.6} />} style={{ flex: "1 1 220px" }} />
+              <Select value={person} onChange={setPerson} clearable searchable placeholder="Tout le monde" aria-label="Filtrer par personne" w={170}
+                data={(users.data ?? []).map((u) => ({ value: u.id, label: u.name }))} />
+              {canCreate && (
+                <Button onClick={() => setCreating(true)} leftSection={<IconPlus size={16} stroke={1.8} />}>
+                  Nouvelle tâche
+                </Button>
+              )}
             </div>
-            {(tasks.data ?? []).map((t) => (
-              <div key={t.id} data-row role="button" tabIndex={0} aria-label={`Ouvrir ${t.title}`}
-                onClick={() => setDetailId(t.id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailId(t.id); } }}
-                style={{ ...card, cursor: "pointer" }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                  <AxisChip code={t.axis_code} />
-                  {t.milestone && <span style={{ fontSize: 12, fontWeight: 600 }}>◆ Jalon</span>}
-                </div>
-                <strong>{t.title}</strong>
-                <div style={{ color: muted, fontSize: 14 }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)}, {t.status === "todo" ? "À faire" : t.status === "in_progress" ? "En cours" : t.status === "blocked" ? "Bloquée" : "Terminée"}</div>
-                <div style={{ color: muted, fontSize: 14 }}>
-                  {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(", ") || "sans collaborateur"}
-                </div>
-                {t.depends_on.length > 0 && (
-                  <div style={{ fontSize: 13, color: muted }}>Dépend de : {t.depends_on.map((d) => d.title).join(", ")}</div>
-                )}
+            <div className="t-filters">
+              {AXIS_ORDER.map((a) => (
+                <button key={a} type="button" className="t-axis-chip" aria-pressed={axis === a} onClick={() => setAxis(axis === a ? "" : a)}
+                  style={{ "--axis": AXES[a].color } as React.CSSProperties}>
+                  <i aria-hidden="true" />{AXES[a].label}
+                </button>
+              ))}
+              <SegmentedControl size="xs" value={status} onChange={setStatus} style={{ marginLeft: "auto" }} aria-label="Filtrer par statut"
+                data={[["", "Toutes"], ["todo", "À faire"], ["in_progress", "En cours"], ["blocked", "Bloquées"], ["done", "Terminées"]]
+                  .map(([value, label]) => ({ value, label: `${label} ${value ? base.filter((t) => t.status === value).length : base.length}` }))} />
+            </div>
+            {AXIS_ORDER.map((a) => {
+              const rows = visible.filter((t) => t.axis_code === a);
+              if (rows.length === 0) return null;
+              const all = (tasks.data ?? []).filter((t) => t.axis_code === a && !t.milestone);
+              const done = all.filter((t) => t.status === "done").length;
+              return (
+                <section key={a} className="t-group" aria-labelledby={`grp-${a}`} style={{ "--axis": AXES[a].color } as React.CSSProperties}>
+                  <div className="t-group-head">
+                    <i aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 2, background: "var(--axis)" }} />
+                    <strong id={`grp-${a}`}>{AXES[a].label}</strong>
+                    <span style={{ color: muted }}>{done} terminée{done > 1 ? "s" : ""} sur {all.length}</span>
+                    <span className="t-group-bar" aria-hidden="true"><span style={{ width: `${all.length ? (done / all.length) * 100 : 0}%` }} /></span>
+                  </div>
+                  {rows.map((t) => {
+                    const lateNow = !t.milestone && t.status !== "done" && t.end_date < today;
+                    const hours = t.assignments.reduce((n, x) => n + x.planned_hours, 0);
+                    const lead = t.assignments.find((x) => x.role === "lead");
+                    return (
+                      <div key={t.id} className="t-row" data-status={t.status} role="button" tabIndex={0}
+                        aria-label={`${t.title}, ${STATUS_LABEL[t.status] ?? t.status}${lateNow ? ", en retard" : ""}. Ouvrir la fiche`}
+                        onClick={() => setDetailId(t.id)}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailId(t.id); } }}>
+                        {t.milestone
+                          ? <span aria-hidden="true" style={{ width: 11, height: 11, margin: "0 2.5px", transform: "rotate(45deg)", background: "var(--text-1)", borderRadius: 2 }} />
+                          : <span className="t-status" data-s={t.status} aria-hidden="true" />}
+                        <div style={{ minWidth: 0 }}>
+                          <div className="t-title">{t.title}</div>
+                          <div className="t-meta">
+                            {lateNow && <span className="t-late">En retard, </span>}
+                            {t.milestone ? "Jalon" : STATUS_LABEL[t.status]}
+                            {lead ? `, pilote ${nameOf(lead.user_id)}` : ", sans pilote"}
+                            {t.depends_on.length > 0 ? `, dépend de ${t.depends_on.length} tâche${t.depends_on.length > 1 ? "s" : ""}` : ""}
+                          </div>
+                        </div>
+                        <div className="t-avatars" aria-hidden="true">
+                          {[...t.assignments].sort((x) => (x.role === "lead" ? -1 : 1)).slice(0, 4).map((x) => (
+                            <span key={x.user_id} data-lead={x.role === "lead" || undefined} title={nameOf(x.user_id)}>{initials(nameOf(x.user_id))}</span>
+                          ))}
+                        </div>
+                        <span className="t-dates">{t.milestone ? fmtDate(t.start_date) : `${fmtDate(t.start_date)} → ${fmtDate(t.end_date)}`}</span>
+                        <span className="t-hours">{t.milestone ? "" : fmtH(hours)}</span>
+                      </div>
+                    );
+                  })}
+                </section>
+              );
+            })}
+            {tasks.data && visible.length === 0 && (
+              <div style={{ ...card, textAlign: "center", padding: "32px 20px" }}>
+                <p style={{ margin: "0 0 4px", fontWeight: 500 }}>Aucune tâche ne correspond à ces filtres.</p>
+                <p style={{ margin: 0, color: muted, fontSize: 14 }}>Retire un filtre ou cherche un autre mot.</p>
               </div>
-            ))}
-            {tasks.data?.length === 0 && <p style={{ color: muted }}>Aucune tâche ne correspond.</p>}
+            )}
           </section>
         )}
       </div>
@@ -393,7 +443,7 @@ function TaskDetail({ id, onClose, role, nameOf }: {
     queryKey: ["comments", id],
     queryFn: () => api<{ author: string; body: string; at: string }[]>(`/api/tasks/${id}/comments`),
   });
-  const all = useQuery({ queryKey: ["tasks-all"], queryFn: () => api<Task[]>("/api/tasks") });
+  const all = useQuery({ queryKey: ["tasks"], queryFn: () => api<Task[]>("/api/tasks") });
 
   const post = async () => {
     if (!comment.trim()) return;

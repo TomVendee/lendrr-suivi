@@ -41,7 +41,7 @@ export function Meteo({ goSynthese }: { goSynthese: () => void }) {
   const meteo = useQuery({ queryKey: ["meteo"], queryFn: () => api<{ cards: MeteoCard[] }>("/api/meteo") });
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: () => api<{ alerts: Alert[] }>("/api/alerts") });
   const gantt = useQuery({ queryKey: ["gantt-all"], queryFn: () => api<{ today: string; tasks: GanttT[] }>("/api/gantt") });
-  const tasks = useQuery({ queryKey: ["tasks-all"], queryFn: () => api<Task[]>("/api/tasks") });
+  const tasks = useQuery({ queryKey: ["tasks"], queryFn: () => api<Task[]>("/api/tasks") });
   const load = useQuery({ queryKey: ["load-now"], queryFn: () => api<Load>("/api/load") });
   // L'animation d'entrée du casier ne joue qu'une fois par visite de l'écran.
   const [intro, setIntro] = useState(true);
