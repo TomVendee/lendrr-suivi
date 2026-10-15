@@ -1,9 +1,9 @@
 /** Coquille : barre latérale repliable + barre du haut (ordinateur), en-tête + barre du bas (téléphone). */
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Avatar, Menu, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
+import { Avatar, Drawer, Menu, Modal, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
-  IconChevronRight, IconDots, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
+  IconChevronRight, IconDots, IconGridDots, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
   IconLogout, IconMoon, IconSearch, IconSun,
 } from "@tabler/icons-react";
 import { api, initials, useSettings, type Me } from "./api";
@@ -60,6 +60,7 @@ export function Shell({ me, view, setView, children }: {
   const mobile = useIsMobile();
   const qc = useQueryClient();
   const [collapsed, toggleCollapsed] = useCollapsed();
+  const [more, setMore] = useState(false);
   const settings = useSettings();
   const canDecide = settings.data?.can_decide ?? false;
   const alerts = useQuery({ queryKey: ["alerts"], queryFn: () => api<{ alerts: { severity: number }[] }>("/api/alerts") });
@@ -99,7 +100,7 @@ export function Shell({ me, view, setView, children }: {
           </span>
         </header>
         <main className="m-content page">{children}</main>
-        <nav className="m-tabs" aria-label="Navigation" style={{ "--n": tabs.length } as React.CSSProperties}>
+        <nav className="m-tabs" aria-label="Navigation" style={{ "--n": tabs.length + 1 } as React.CSSProperties}>
           {tabs.map((t) => (
             <button key={t.id} className="m-tab" aria-current={view === t.id ? "page" : undefined} onClick={() => setView(t.id)}>
               <t.icon size={22} stroke={1.6} />
@@ -107,7 +108,24 @@ export function Shell({ me, view, setView, children }: {
               {count(t.id)}
             </button>
           ))}
+          <button className="m-tab" aria-current={!MOBILE_TABS.includes(view) ? "page" : undefined} aria-haspopup="dialog" onClick={() => setMore(true)}>
+            <IconGridDots size={22} stroke={1.6} />
+            Plus
+          </button>
         </nav>
+        <Drawer opened={more} onClose={() => setMore(false)} position="bottom" radius="lg" title="Tous les écrans"
+          overlayProps={{ backgroundOpacity: 0.4, blur: 2 }} styles={{ content: { height: "auto", maxHeight: "85dvh" } }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, paddingBottom: "env(safe-area-inset-bottom)" }}>
+            {navFor(me.role).map((n) => (
+              <button key={n.id} className="m-sheet-item" aria-current={view === n.id ? "page" : undefined}
+                onClick={() => { setMore(false); setView(n.id); }}>
+                <n.icon size={22} stroke={1.6} />
+                {n.short}
+                {count(n.id)}
+              </button>
+            ))}
+          </div>
+        </Drawer>
         <CommandPalette me={me} />
       </div>
     );
@@ -201,5 +219,20 @@ function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; com
         <Menu.Item leftSection={<IconLogout size={16} stroke={1.6} />} onClick={onLogout}>Se déconnecter</Menu.Item>
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+/** Fenêtre centrée sur ordinateur, feuille qui glisse du bas sur téléphone (atteignable au pouce). */
+export function Sheet({ opened, onClose, title, children }: {
+  opened: boolean; onClose: () => void; title: React.ReactNode; children: React.ReactNode;
+}) {
+  const mobile = useIsMobile();
+  return mobile ? (
+    <Drawer opened={opened} onClose={onClose} title={title} position="bottom" radius="lg"
+      overlayProps={{ backgroundOpacity: 0.4, blur: 2 }} styles={{ content: { height: "auto", maxHeight: "92dvh" } }}>
+      {children}
+    </Drawer>
+  ) : (
+    <Modal opened={opened} onClose={onClose} title={title} size="lg" centered radius="lg">{children}</Modal>
   );
 }

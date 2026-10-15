@@ -193,3 +193,14 @@
 .sp-desc { color: var(--text-2); }
 .sp-action mark { background: color-mix(in oklch, var(--warn) 32%, transparent); color: inherit; border-radius: 2px; }
 .sp-group::before { text-transform: none !important; font-weight: 500 !important; color: var(--text-3) !important; }
+
+/* Feuille « Plus » (mobile) : tous les écrans, cibles de 72 px. */
+.m-sheet-item {
+  position: relative; min-height: 72px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-1); color: var(--text-1);
+  font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer;
+}
+.m-sheet-item[aria-current="page"] { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.m-sheet-item .nav-count { position: absolute; top: 6px; right: 6px; margin: 0; }

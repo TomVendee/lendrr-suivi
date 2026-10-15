@@ -17,6 +17,7 @@ fn mime(path: &str) -> &'static str {
     else if path.ends_with(".css") { "text/css; charset=utf-8" }
     else if path.ends_with(".svg") { "image/svg+xml" }
     else if path.ends_with(".json") { "application/json" }
+    else if path.ends_with(".webmanifest") { "application/manifest+json" }
     else if path.ends_with(".png") { "image/png" }
     else if path.ends_with(".ico") { "image/x-icon" }
     else if path.ends_with(".woff2") { "font/woff2" }

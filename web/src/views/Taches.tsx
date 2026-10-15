@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, Modal, NumberInput, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { navigate } from "../router";
+import { Sheet } from "../Shell";
 import { api, fmtDate, fmtH, initials, useSettings, useUsers, type Task } from "../api";
 import { AxisChip, C, F_TITRE, PageHead, card, legend, line, muted, surf, track } from "../theme";
 
@@ -352,7 +353,7 @@ function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () 
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Nouvelle tâche" size="lg" centered>
+    <Sheet opened={opened} onClose={onClose} title="Nouvelle tâche">
       <div style={{ display: "grid", gap: 12 }}>
         <TextInput label="Titre" value={f.title} onChange={(e) => set("title")(e.target.value)} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -376,7 +377,7 @@ function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () 
           <Button onClick={submit}>Créer</Button>
         </div>
       </div>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -417,7 +418,7 @@ function TaskDetail({ id, onClose, role, nameOf }: {
 
   const t = task.data;
   return (
-    <Modal opened onClose={onClose} title={t?.title ?? "Tâche"} size="lg" centered>
+    <Sheet opened onClose={onClose} title={t?.title ?? "Tâche"}>
       {!t ? <p>Chargement…</p> : (
         <div style={{ display: "grid", gap: 14 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -464,6 +465,6 @@ function TaskDetail({ id, onClose, role, nameOf }: {
           </p>
         </div>
       )}
-    </Modal>
+    </Sheet>
   );
 }

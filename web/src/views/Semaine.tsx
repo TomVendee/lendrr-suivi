@@ -191,15 +191,29 @@ export function Semaine({ me }: { me: Me }) {
         </div>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: mobile ? 10 : 16 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flex: mobile ? "1 1 auto" : undefined }}>
+        <div style={{ display: "flex", flexWrap: mobile ? "wrap" : undefined, alignItems: "flex-end", gap: 8, flex: mobile ? "1 1 auto" : undefined }}>
           <NumberInput
             id={`h-${t.id}`}
             label={mobile ? "Mes heures" : "Mes heures cette semaine"}
-            min={0} max={80} step={0.5} decimalSeparator=","
+            min={0} max={80} step={0.25} decimalSeparator=","
             value={hours[t.id] ?? t.my_real_hours}
             onChange={(v) => setHours({ ...hours, [t.id]: String(v ?? "") })}
-            styles={{ input: { fontFamily: F_MONO, fontSize: mobile ? 18 : 16 }, root: { width: mobile ? "100%" : 120 } }}
+            styles={{ input: { fontFamily: F_MONO, fontSize: mobile ? 18 : 16, height: mobile ? 48 : undefined }, root: { width: mobile ? "100%" : 120 } }}
           />
+          {mobile && (
+            // Saisie au pouce : ajouts rapides, cibles de 44 px.
+            <div style={{ display: "flex", gap: 8, width: "100%" }} role="group" aria-label={`Ajouter des heures à ${t.title}`}>
+              {[0.5, 1, 2].map((inc) => (
+                <button key={inc} type="button" className="chip-add"
+                  onClick={() => {
+                    const cur = parseFloat(String(hours[t.id] ?? t.my_real_hours).replace(",", ".")) || 0;
+                    setHours({ ...hours, [t.id]: String(Math.round((cur + inc) * 100) / 100) });
+                  }}>
+                  +{fmtN(inc).replace(",0", "")} h
+                </button>
+              ))}
+            </div>
+          )}
           {!mobile && <span style={{ fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h prévues</span>}
         </div>
         {mobile && <span style={{ paddingBottom: 12, fontFamily: F_MONO, fontSize: 14, color: muted }}>/ {fmtN(t.my_planned_hours)} h</span>}

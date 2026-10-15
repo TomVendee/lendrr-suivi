@@ -75,3 +75,11 @@ a:hover { color: var(--accent-hover); }
 
 /* Graphes Mantine : grille et textes discrets, suivent le thème. */
 .mantine-LineChart-root, .mantine-BarChart-root { --chart-grid-color: var(--border); --chart-text-color: var(--text-3); }
+
+/* Ajouts rapides d'heures (mobile). */
+.chip-add {
+  flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-1); color: var(--text-1); font: 500 14px var(--font-mono); cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
+}
+.chip-add:active { transform: scale(0.96); background: var(--accent-soft); }
