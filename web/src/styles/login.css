@@ -1,0 +1,36 @@
+/* Connexion : panneau de marque (casier qui s'allume) + formulaire. */
+.login { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); background: var(--bg); }
+.login-brand {
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 12px;
+  padding: clamp(32px, 6vw, 72px);
+  background: var(--surface-1); color: var(--text-1);
+  background-image: radial-gradient(ellipse at 30% 20%, color-mix(in oklch, var(--accent) 18%, transparent), transparent 60%);
+}
+.login-locker {
+  display: grid; grid-template-columns: repeat(2, 88px); gap: 12px;
+  margin-bottom: auto; margin-top: 8vh;
+}
+.login-locker span {
+  height: 64px; border-radius: 12px; border: 1px solid var(--border-strong); background: var(--sunken-2);
+  position: relative;
+}
+.login-locker span::after {
+  content: ""; position: absolute; right: 10px; top: 50%; width: 3px; height: 18px; margin-top: -9px;
+  border-radius: 2px; background: var(--border-strong);
+}
+.login-locker span[data-on] { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 40px color-mix(in oklch, var(--accent) 55%, transparent); }
+.login-locker span[data-on]::after { background: var(--on-accent); opacity: 0.7; }
+@media (prefers-reduced-motion: no-preference) {
+  .login-locker span { animation: cell-in 520ms var(--ease-out) both; animation-delay: calc(var(--k) * 70ms); }
+  .login-locker span[data-on] { animation: cell-in 520ms var(--ease-out) both, cell-glow 900ms 600ms var(--ease-out) both; }
+}
+@keyframes cell-in { from { opacity: 0; transform: translateY(10px) scale(0.96); } }
+@keyframes cell-glow { from { box-shadow: none; filter: brightness(0.6); } }
+.login-pitch { margin: 0; font-size: clamp(26px, 2.4vw + 10px, 40px); font-weight: 600; letter-spacing: -0.035em; line-height: 1.1; max-width: 16ch; text-wrap: balance; }
+.login-sub { margin: 0; color: var(--text-2); max-width: 40ch; }
+.login-main { display: grid; place-items: center; padding: 24px 16px; }
+.login-card { width: min(400px, 100%); }
+@media (max-width: 860px) {
+  .login { grid-template-columns: 1fr; }
+  .login-brand { display: none; }
+}

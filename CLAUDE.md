@@ -63,6 +63,11 @@ ne passent pas par le proxy Vite : les appeler directement sur `:8080`.
 - Couleurs, rayons, ombres et durées : **uniquement** les variables de `web/src/styles/tokens.css` (clair et
   sombre via `light-dark()`), jamais de hex dans les écrans. `web/src/theme.tsx` garde des alias historiques
   (`C.*`, `muted`…) qui pointent vers ces variables ; `.inverse` force un bloc en sombre.
+- Navigation : `web/src/nav.tsx` est la source unique des écrans (libellé, icône, raccourci « g + lettre »),
+  utilisée par la barre latérale, la barre du bas mobile et la palette ⌘K (`CommandPalette.tsx`,
+  `@mantine/spotlight`). `Sheet` (`Shell.tsx`) = fenêtre sur ordinateur, feuille du bas sur téléphone.
+- Écritures fréquentes optimistes (`setQueryData` puis annulation si erreur), `toastUndo`/`CountUp` dans
+  `web/src/motion.tsx`, squelettes par écran dans `web/src/skeletons.tsx`. Couleurs d'axe : `AXES` (`theme.tsx`).
 - Requêtes sqlx **à l'exécution** (`query` / `query_as`), pas de macros `query!` (D4 : build Docker en
   `SQLX_OFFLINE` sans `.sqlx/`).
 - Cookie `Secure` désactivé si `APP_URL` commence par `http://` (dev local uniquement).

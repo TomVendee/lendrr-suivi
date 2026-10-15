@@ -26,7 +26,6 @@ export const C = {
   bleuClair: "var(--accent-text)",
 };
 
-export const F_SANS = "var(--font-sans)";
 /** Titres : même famille que le texte, l'identité vient du serrage et de la graisse. */
 export const F_TITRE = "var(--font-sans)";
 export const F_MONO = "var(--font-mono)";
@@ -34,8 +33,6 @@ export const F_MONO = "var(--font-mono)";
 export const ink = "var(--text-1)";
 export const muted = "var(--text-2)";
 export const line = "var(--border)";
-export const faint = "var(--bg)";
-export const inputBorder = "var(--border-strong)";
 export const surf = "var(--surface-1)";
 export const box = "var(--sunken)";
 export const track = "var(--sunken-2)";
@@ -55,66 +52,10 @@ export const kpi: React.CSSProperties = {
   gap: 6,
 };
 
-export const btnPrimary: React.CSSProperties = {
-  height: 48,
-  padding: "0 24px",
-  border: 0,
-  borderRadius: 8,
-  background: C.accent,
-  color: "#FFFFFF",
-  font: "inherit",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-export const btnSecond: React.CSSProperties = {
-  height: 48,
-  padding: "0 18px",
-  borderRadius: 8,
-  border: `1px solid #A9AFB5`,
-  background: C.surface,
-  color: C.encre,
-  font: "inherit",
-  fontWeight: 500,
-  cursor: "pointer",
-};
-
-export const field: React.CSSProperties = {
-  height: 44,
-  padding: "0 12px",
-  border: `1px solid ${inputBorder}`,
-  borderRadius: 8,
-  background: surf,
-  color: ink,
-  font: "inherit",
-};
-
-export const labelSm: React.CSSProperties = { fontSize: 13, fontWeight: 500 };
 export const legend: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
   color: C.discret,
-};
-
-export function Icon({ d, size = 18 }: { d: React.ReactNode; size?: number }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      {d}
-    </svg>
-  );
-}
-
-export const ICONS = {
-  semaine: (<><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>),
-  taches: (<><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" /></>),
-  meteo: (<><circle cx="8" cy="9" r="3" /><path d="M8 2v1.5M2 9h1.5M3.8 4.8l1 1M12.2 4.8l-1 1M9 19h9a4 4 0 0 0 0-8 5 5 0 0 0-9.5 1.5A3.3 3.3 0 0 0 9 19z" /></>),
-  charge: (<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />),
-  graphes: (<path d="M3 3v18h18M7 15l4-5 3 3 6-7" />),
-  gantt: (<path d="M3 5h8M7 12h10M12 19h9" />),
-  alertes: (<><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9zM10 20.5a2 2 0 0 0 4 0" /></>),
-  synthese: (<path d="M12 3v12M7 10l5 5 5-5M4 21h16" />),
-  reglages: (<><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></>),
 };
 
 /** Couleur et libellé de chaque axe (palette catégorielle validée, tokens.css). */

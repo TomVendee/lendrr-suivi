@@ -21,19 +21,22 @@ export const TAG: Record<string, { label: string; style: React.CSSProperties }> 
   "validation-pending": { label: "Validation en attente", style: { background: "var(--sunken)", color: ink } },
 };
 
+/** « Sophie : » devant le détail quand l'alerte concerne une personne. */
+const who = (a: Alert) => (a.user ? `${a.user} : ` : "");
+
 export function alertDetail(a: Alert): string {  switch (a.kind) {
     case "milestone-threatened":
       return a.milestone ? `« ${a.milestone} » menacé.` : `« ${a.title ?? ""} » en retard sur le chemin critique.`;
     case "blocking-late":
-      return `${a.user ?? ""} · bloque une tâche qui démarre bientôt (seuil des réglages).`;
+      return `${who(a)}bloque une tâche qui démarre bientôt.`;
     case "late":
-      return `${a.user ?? ""} · échéance dépassée et tâche non terminée.`;
+      return `${who(a)}échéance dépassée, tâche non terminée.`;
     case "overload":
-      return `${a.user ?? ""} · charge prévue au-dessus de la capacité en S${a.week}.`;
+      return `${who(a)}charge prévue au-dessus de la capacité en semaine ${a.week}.`;
     case "missing-hours":
-      return `${a.user ?? ""} · aucune saisie pour la S${a.week}.`;
+      return `${who(a)}aucune heure saisie pour la semaine ${a.week}.`;
     case "overrun":
-      return `${a.user ?? ""} · réel au-dessus du prévu, au-delà du seuil des réglages.`;
+      return `${who(a)}heures réelles au-dessus du prévu.`;
     case "incomplete":
       return `Sans pilote ou sans heures prévues.`;
     case "validation-pending":

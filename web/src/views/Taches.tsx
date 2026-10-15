@@ -141,7 +141,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
         {canDecide && (
           <section aria-labelledby="file-titre" style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-            <h2 id="file-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>En attente · {list.length}</h2>
+            <h2 id="file-titre" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 18, fontWeight: 600 }}>En attente ({list.length})</h2>
             {list.map((r) => {
               const choisi = shown?.id === r.id;
               const isMod = !!r.task_id;
@@ -156,7 +156,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
                   </span>
                   <span style={{ fontWeight: 600, fontSize: 15 }}>{r.payload.title}</span>
                   <span style={{ fontSize: 13, color: muted }}>
-                    Proposée par {r.created_by ? nameOf(r.created_by) : "—"} · {r.payload.assignments.length} collaborateur{r.payload.assignments.length > 1 ? "s" : ""}
+                    Proposée par {r.created_by ? nameOf(r.created_by) : "—"}, {r.payload.assignments.length} collaborateur{r.payload.assignments.length > 1 ? "s" : ""}
                   </span>
                 </button>
               );
@@ -196,7 +196,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
               <span style={{ fontSize: 14 }}>{draft.done_criteria || "—"}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Collaborateurs assignés · {draft.assignments.length}</h3>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Collaborateurs assignés ({draft.assignments.length})</h3>
               {draft.assignments.map((a, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "36px minmax(0, 1fr) 140px 120px 44px", alignItems: "center", gap: 12, padding: "8px 0", borderTop: `1px solid ${line}` }}>
                   <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: "50%", background: `${track}`, fontFamily: F_TITRE, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -298,12 +298,12 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
                   {t.milestone && <span style={{ fontSize: 12, fontWeight: 600 }}>◆ Jalon</span>}
                 </div>
                 <strong>{t.title}</strong>
-                <div style={{ color: muted, fontSize: 14 }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.status === "todo" ? "À faire" : t.status === "in_progress" ? "En cours" : t.status === "blocked" ? "Bloquée" : "Terminée"}</div>
+                <div style={{ color: muted, fontSize: 14 }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)}, {t.status === "todo" ? "À faire" : t.status === "in_progress" ? "En cours" : t.status === "blocked" ? "Bloquée" : "Terminée"}</div>
                 <div style={{ color: muted, fontSize: 14 }}>
-                  {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(" · ") || "sans collaborateur"}
+                  {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(", ") || "sans collaborateur"}
                 </div>
                 {t.depends_on.length > 0 && (
-                  <div style={{ fontSize: 13, color: muted }}>Dépend de : {t.depends_on.map((d) => d.title).join(" · ")}</div>
+                  <div style={{ fontSize: 13, color: muted }}>Dépend de : {t.depends_on.map((d) => d.title).join(", ")}</div>
                 )}
               </div>
             ))}
@@ -341,7 +341,7 @@ function NewTaskModal({ opened, onClose, role }: { opened: boolean; onClose: () 
         }),
       });
       notifications.show({
-        message: r.status === "pending-validation" ? "Proposée — en attente de validation." : "Tâche créée.",
+        message: r.status === "pending-validation" ? "Tâche proposée, en attente de validation." : "Tâche créée.",
         color: "ok",
       });
       onClose();
@@ -450,7 +450,7 @@ function TaskDetail({ id, onClose, role, nameOf }: {
             {(comments.data ?? []).map((c, i) => (
               <div key={i} style={{ padding: "8px 0", borderTop: `1px solid ${line}` }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{c.author}</span>
-                <span style={{ fontSize: 12, color: muted }}> · {new Date(c.at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                <span style={{ fontSize: 12, color: muted }}>, {new Date(c.at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
                 <p style={{ margin: "2px 0 0", fontSize: 14 }}>{c.body}</p>
               </div>
             ))}
@@ -461,7 +461,7 @@ function TaskDetail({ id, onClose, role, nameOf }: {
             </div>
           </div>
           <p style={{ color: muted, fontSize: 13 }}>
-            {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(" · ")}
+            {t.assignments.map((a) => `${a.role === "lead" ? "Pilote" : "Appui"} ${nameOf(a.user_id)} ${fmtH(a.planned_hours)}`).join(", ")}
           </p>
         </div>
       )}

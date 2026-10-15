@@ -75,7 +75,7 @@ export function Charge() {
     <>
       <PageHead
         title="Plan de charge"
-        sub={`Heures par personne et par semaine · S${String(weeks[0]).padStart(2, "0")} → S${String(weeks[weeks.length - 1]).padStart(2, "0")}`}
+        sub={`Heures par personne et par semaine, de S${String(weeks[0]).padStart(2, "0")} à S${String(weeks[weeks.length - 1]).padStart(2, "0")}`}
         right={
           <SegmentedControl
             value={mode}
@@ -142,7 +142,7 @@ export function Charge() {
               </div>
             ))}
             <div style={{ display: "grid", gridTemplateColumns: `170px repeat(${weeks.length}, minmax(0, 1fr))`, gap: 6, paddingTop: 10, alignItems: "stretch" }}>
-              <div style={{ display: "flex", alignItems: "center", fontWeight: 700 }}>Équipe</div>
+              <div style={{ display: "flex", alignItems: "center", fontWeight: 600 }}>Équipe</div>
               {totals.map((t, i) => (
                 <div key={i} style={{ minHeight: 48, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", boxSizing: "border-box", background: C.encre, color: C.fond, fontFamily: F_MONO, fontSize: 13, fontWeight: 600 }}>{t}</div>
               ))}

@@ -33,7 +33,7 @@ export function Reglages() {
 
   return (
     <>
-      <PageHead title="Réglages" sub="Projet LENDRR · seul le chef de projet voit cet écran" />
+      <PageHead title="Réglages" sub="Seul le chef de projet voit cet écran." />
 
       <ReglagesProjet users={users.data ?? []} />
 
@@ -138,7 +138,7 @@ function Capacites({ users }: { users: User[] }) {
       {(caps.data ?? []).filter((u) => u.overrides.length > 0).map((u) => (
         <div key={u.user_id} style={{ fontSize: 14, padding: "4px 0" }}>
           <strong>{u.name}</strong> (défaut {u.default} h) :{" "}
-          {u.overrides.map((o) => `S${o.week} = ${o.hours} h`).join(" · ")}
+          {u.overrides.map((o) => `S${o.week} = ${o.hours} h`).join(", ")}
         </div>
       ))}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, paddingTop: 12 }}>
@@ -244,8 +244,8 @@ function ReglagesProjet({ users }: { users: User[] }) {
         )}
         <Radio.Group label="Qui peut créer ou proposer une tâche ?" value={s.members_can_propose ? "all" : "pilot"}
           onChange={(v) => set({ members_can_propose: v === "all" })} style={{ padding: "12px 0" }}>
-          <Radio value="all" mt={8} label="Tout le monde · les membres proposent, le chef de projet valide" />
-          <Radio value="pilot" mt={8} label="Chef de projet seulement · les membres peuvent seulement saisir leurs heures et leur statut" />
+          <Radio value="all" mt={8} label="Tout le monde" description="Les membres proposent, le chef de projet valide." />
+          <Radio value="pilot" mt={8} label="Chef de projet seulement" description="Les membres saisissent seulement leurs heures et leur statut." />
         </Radio.Group>
       </section>
 
@@ -256,8 +256,8 @@ function ReglagesProjet({ users }: { users: User[] }) {
           une tâche sans pilote ne peut pas être validée.
         </p>
         <Radio.Group label="Heures prévues" value={s.hours_mode} onChange={(v) => set({ hours_mode: v as Settings["hours_mode"] })}>
-          <Radio value="per_person" mt={8} label="Saisies pour chaque collaborateur · ex. Reda 2 h, Tom G. 1 h, Erwen 0,5 h" />
-          <Radio value="equal_split" mt={8} label="Un total réparti à parts égales · ex. 3,5 h pour 3 personnes = 1,2 h chacune" />
+          <Radio value="per_person" mt={8} label="Saisies pour chaque collaborateur" description="Par exemple Reda 2 h, Tom G. 1 h, Erwen 0,5 h." />
+          <Radio value="equal_split" mt={8} label="Un total réparti à parts égales" description="Par exemple 3,5 h pour 3 personnes, soit 1,2 h chacune." />
         </Radio.Group>
       </section>
 

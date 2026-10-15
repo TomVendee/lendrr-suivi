@@ -80,7 +80,7 @@ export function Semaine({ me }: { me: Me }) {
           body: JSON.stringify({ task_id: taskId, week: d.week, hours: h }),
         });
       }
-      setMsg(`Enregistré · ${fmtN(d.real)} h pour S${String(d.week).padStart(2, "0")}`);
+      setMsg(`Enregistré : ${fmtN(d.real)} h pour la semaine ${d.week}`);
       notifications.show({ message: "Heures enregistrées", color: "ok" });
       qc.invalidateQueries({ queryKey: ["my-week"] });
     } catch {
@@ -174,7 +174,7 @@ export function Semaine({ me }: { me: Me }) {
           <AxisChip code={t.axis_code} />
           <h3 style={{ margin: 0, fontSize: mobile ? 17 : 18, fontWeight: 600, lineHeight: 1.3 }}>{t.title}</h3>
           <span style={{ fontSize: mobile ? 13 : 14, color: muted }}>
-            {fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.my_role === "lead" ? "pilote" : "appui"}{t.my_role === "lead" ? (mobile ? ` ${fmtH(t.my_planned_hours)}` : ` : moi ${fmtH(t.my_planned_hours)}`) : ` ${me.name}`}
+            {fmtDate(t.start_date)} → {fmtDate(t.end_date)}, {t.my_role === "lead" ? "pilote" : "appui"}{t.my_role === "lead" ? (mobile ? ` ${fmtH(t.my_planned_hours)}` : ` : moi ${fmtH(t.my_planned_hours)}`) : ` ${me.name}`}
           </span>
         </div>
         <StatusPill status={t.status} />
@@ -249,7 +249,7 @@ export function Semaine({ me }: { me: Me }) {
               {chevL}
             </button>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <h1 style={{ margin: 0, fontFamily: F_TITRE, fontSize: 22, fontWeight: 700 }}>Ma semaine · S{String(d.week).padStart(2, "0")}</h1>
+              <h1 style={{ margin: 0, fontFamily: F_TITRE, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>Semaine {d.week}</h1>
               <span style={{ fontSize: 13, color: C.navMuted }}>{fmtDate(d.monday)} → {fmtDate(d.sunday)}</span>
             </div>
             <button type="button" aria-label="Semaine suivante" onClick={() => setWeek(d.week + 1)}
@@ -280,8 +280,8 @@ export function Semaine({ me }: { me: Me }) {
     <>
       <header style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <h1 style={{ margin: 0, fontFamily: F_TITRE, fontWeight: 700, fontSize: 34, letterSpacing: "-0.01em" }}>Ma semaine</h1>
-          <p style={{ margin: 0, color: muted }}>S{String(d.week).padStart(2, "0")} · {fmtDate(d.monday)} → {fmtDate(d.sunday)} · à saisir avant lundi, 12 h</p>
+          <h1 style={{ margin: 0, fontWeight: 600, fontSize: "clamp(22px, 1.2vw + 16px, 28px)", letterSpacing: "-0.025em" }}>Ma semaine</h1>
+          <p style={{ margin: 0, color: muted }}>Semaine {d.week}, du {fmtDate(d.monday)} au {fmtDate(d.sunday)}. Heures à saisir avant lundi 12 h.</p>
         </div>
         {weekNav}
       </header>
@@ -303,16 +303,16 @@ export function Semaine({ me }: { me: Me }) {
             {myAlerts.map((a, i) => (
               <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span aria-hidden="true" style={{ flex: "0 0 auto", marginTop: 6, width: 10, height: 10, borderRadius: "50%", background: (a.severity ?? 0) >= 3 ? C.crit : C.warn }} />
-                <span style={{ fontSize: 14 }}><strong>{(TAG[a.kind]?.label ?? a.kind)}</strong>{a.title || a.milestone ? ` « ${a.title ?? a.milestone} »` : ""} — {alertDetail(a)}</span>
+                <span style={{ fontSize: 14 }}><strong>{(TAG[a.kind]?.label ?? a.kind)}</strong>{a.title || a.milestone ? ` « ${a.title ?? a.milestone} »` : ""} : {alertDetail(a)}</span>
               </div>
             ))}
           </section>
           <section aria-labelledby="suivante" style={card}>
-            <h2 id="suivante" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 17, fontWeight: 600 }}>Semaine prochaine · S{String(d.week + 1).padStart(2, "0")}</h2>
+            <h2 id="suivante" style={{ margin: 0, fontFamily: F_TITRE, fontSize: 17, fontWeight: 600 }}>Semaine prochaine (S{String(d.week + 1).padStart(2, "0")})</h2>
             {(next.data?.tasks ?? []).map((t) => (
               <div key={t.id} style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 10, borderTop: `1px solid ${track}` }}>
                 <span style={{ fontSize: 14, fontWeight: 500 }}>{t.title}</span>
-                <span style={{ fontSize: 13, color: muted }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)} · {t.my_role === "lead" ? "pilote" : "appui"}</span>
+                <span style={{ fontSize: 13, color: muted }}>{fmtDate(t.start_date)} → {fmtDate(t.end_date)}, {t.my_role === "lead" ? "pilote" : "appui"}</span>
               </div>
             ))}
             {(next.data?.tasks.length ?? 0) === 0 && <span style={{ fontSize: 14, color: muted }}>Rien de prévu.</span>}

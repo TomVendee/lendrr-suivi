@@ -1,11 +1,13 @@
 /** Racine : login/setup puis Shell + vues, choisies par l'URL (Météo par défaut côté pilote, Ma semaine côté membre). */
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Card, PasswordInput, TextInput, Title } from "@mantine/core";
+import { Button, PasswordInput, TextInput } from "@mantine/core";
 import { api, useMe } from "./api";
 import { Shell } from "./Shell";
 import { navigate, useRoute, type View } from "./router";
-import { C, F_TITRE, muted } from "./theme";
+import { muted } from "./theme";
+import { LockerMark } from "./nav";
+import "./styles/login.css";
 import { Meteo } from "./views/Meteo";
 import { Semaine } from "./views/Semaine";
 import { Taches } from "./views/Taches";
@@ -63,33 +65,48 @@ function Login() {
       }
       qc.invalidateQueries({ queryKey: ["me"] });
     } catch {
-      setErr("Échec de connexion — vérifie tes identifiants (ou le code setup).");
+      setErr(mode === "login" ? "E-mail ou mot de passe incorrect." : "Création refusée : vérifie le code de premier lancement.");
     }
   };
 
+  const setup = mode === "setup";
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: 16 }}>
-      <div style={{ width: 420, maxWidth: "100%" }}>
-        <Title order={1} style={{ fontFamily: F_TITRE, fontWeight: 700, fontSize: 28 }}>Suivi projet</Title>
-        <p style={{ color: muted }}>Projet : LENDRR</p>
-        <Card withBorder radius="lg" p="lg">
-          <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-            {mode === "setup" && (
+    <div className="login">
+      <aside className="login-brand inverse" aria-hidden="true">
+        <div className="login-locker">
+          {Array.from({ length: 6 }, (_, k) => <span key={k} style={{ "--k": k } as React.CSSProperties} data-on={k === 3 || undefined} />)}
+        </div>
+        <p className="login-pitch">Le planning du casier connecté, au même endroit.</p>
+        <p className="login-sub">Tâches, charge, alertes et chemin critique de l'équipe LENDRR.</p>
+      </aside>
+      <main className="login-main">
+        <div className="login-card">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+            <LockerMark size={30} />
+            <div style={{ lineHeight: 1.2 }}>
+              <div style={{ fontWeight: 600, fontSize: 16, letterSpacing: "-0.02em" }}>Suivi projet</div>
+              <div style={{ fontSize: 13, color: muted }}>LENDRR</div>
+            </div>
+          </div>
+          <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 600, letterSpacing: "-0.025em" }}>{setup ? "Créer le compte du chef de projet" : "Connexion"}</h1>
+          <p style={{ margin: "0 0 20px", color: muted }}>{setup ? "Premier lancement : le code vient de la configuration du serveur." : "Avec l'e-mail et le mot de passe donnés par le chef de projet."}</p>
+          <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
+            {setup && (
               <>
-                <TextInput label="Code setup (SETUP_CODE)" placeholder="Code setup (SETUP_CODE)" value={f.code} onChange={set("code")} />
-                <TextInput label="Nom" placeholder="Nom" value={f.name} onChange={set("name")} />
+                <TextInput label="Code de premier lancement" value={f.code} onChange={set("code")} autoComplete="off" />
+                <TextInput label="Nom" placeholder="Tom A." value={f.name} onChange={set("name")} autoComplete="name" />
               </>
             )}
-            <TextInput label="E-mail" placeholder="E-mail" value={f.email} onChange={set("email")} autoComplete="email" />
-            <PasswordInput label="Mot de passe" placeholder="Mot de passe" value={f.password} onChange={set("password")} autoComplete="current-password" />
-            {err && <p style={{ color: C.crit }}>{err}</p>}
-            <Button type="submit" size="md" fullWidth>{mode === "login" ? "Se connecter" : "Créer le compte pilote"}</Button>
+            <TextInput label="E-mail" placeholder="prenom.nom@epita.fr" value={f.email} onChange={set("email")} autoComplete="email" type="email" />
+            <PasswordInput label="Mot de passe" value={f.password} onChange={set("password")} autoComplete={setup ? "new-password" : "current-password"} />
+            {err && <p role="alert" style={{ margin: 0, color: "var(--crit-text)", fontSize: 14 }}>{err}</p>}
+            <Button type="submit" size="md" fullWidth mt={4}>{setup ? "Créer le compte" : "Se connecter"}</Button>
           </form>
-        </Card>
-        <Button variant="filled" color="dark" fullWidth mt="md" onClick={() => setMode(mode === "login" ? "setup" : "login")}>
-          {mode === "login" ? "Premier lancement ? Créer le compte" : "J'ai déjà un compte"}
-        </Button>
-      </div>
+          <Button variant="subtle" color="gray" fullWidth mt="sm" onClick={() => { setErr(""); setMode(setup ? "login" : "setup"); }}>
+            {setup ? "J'ai déjà un compte" : "Premier lancement ? Créer le compte"}
+          </Button>
+        </div>
+      </main>
     </div>
   );
 }
