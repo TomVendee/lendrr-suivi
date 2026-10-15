@@ -93,11 +93,14 @@ pub async fn housekeeping(pool: sqlx::PgPool) {
     loop {
         tick.tick().await;
         let week = project_week(today_paris());
-        let has: Result<bool, _> = sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM baselines WHERE week = $1)")
-            .bind(week)
-            .fetch_one(&pool)
-            .await;
-        if let Ok(false) = has {
+        // Pas de photo d'un planning vide (premier déploiement avant l'import Asana).
+        let missing: Result<bool, _> = sqlx::query_scalar(
+            "SELECT NOT EXISTS (SELECT 1 FROM baselines WHERE week = $1) AND EXISTS (SELECT 1 FROM tasks)",
+        )
+        .bind(week)
+        .fetch_one(&pool)
+        .await;
+        if let Ok(true) = missing {
             match snapshot_week(&pool, week).await {
                 Ok(()) => tracing::info!("baseline S{week:02} prise automatiquement"),
                 Err(e) => tracing::warn!("baseline S{week:02} : {e}"),
