@@ -213,6 +213,8 @@ export function Gantt({ role }: { role: string }) {
     );
   };
   const jalonRow = (t: GTask) => {
+    // Un jalon est aussi une cible (et une source) de lien : pointe du losange à gauche.
+    places[t.id] = { x0: pct(t.start), x1: pct(t.start), y: y + ROW_T / 2, crit: t.critical };
     y += ROW_T;
     return (
       <div key={t.id} className="g-row" style={{ height: ROW_T }}>
@@ -259,6 +261,8 @@ export function Gantt({ role }: { role: string }) {
   }
 
   // Liens de dépendance coudés ; ceux du chemin critique défilent (désactivé si animations réduites).
+  // Successeur qui démarre avant la fin du prédécesseur (chevauchement, import) : détour en S
+  // par la limite de la ligne cible, pour entrer dans la barre par la gauche, flèche visible.
   const segs: React.ReactNode[] = [];
   if (liens) {
     deps.forEach((l, i) => {
@@ -266,13 +270,23 @@ export function Gantt({ role }: { role: string }) {
       if (!a || !b) return;
       const crit = (a.crit && b.crit) || undefined;
       const dim = (critSeul && !crit) || undefined;
-      const xc = Math.max(a.x1 + 0.4, b.x0 - 1.2);
-      const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
       const p = { "data-critical": crit, "data-dim": dim };
-      segs.push(<div key={`${i}a`} className="g-link" {...p} style={{ left: `${a.x1}%`, width: `${xc - a.x1}%`, top: a.y - 1, height: 2 }} />);
-      segs.push(<div key={`${i}b`} className="g-link" data-v {...p} style={{ left: `${xc}%`, width: 2, top: top - 1, height: bottom - top + 2 }} />);
-      segs.push(<div key={`${i}c`} className="g-link" {...p} style={{ left: `${xc}%`, width: `${Math.max(0, b.x0 - xc)}%`, top: b.y - 1, height: 2 }} />);
-      segs.push(<div key={`${i}d`} className="g-arrow" data-critical={crit} style={{ left: `${b.x0}%`, marginLeft: -7, top: b.y - 5, opacity: dim ? 0.1 : 1 }} />);
+      let k = 0;
+      // Vers un jalon, le dernier segment s'arrête au bord du losange (6 px avant son centre).
+      const pad = byId.get(l.to)?.milestone ? 6 : 0;
+      const h = (x1: number, x2: number, yy: number, end = 0) => segs.push(
+        <div key={`${i}-${k++}`} className="g-link" {...p} style={{ left: `${Math.min(x1, x2)}%`, width: `calc(${Math.abs(x2 - x1)}% - ${end}px)`, top: yy - 1, height: 2 }} />);
+      const v = (x: number, y1: number, y2: number) => segs.push(
+        <div key={`${i}-${k++}`} className="g-link" data-v {...p} style={{ left: `${x}%`, width: 2, top: Math.min(y1, y2) - 1, height: Math.abs(y2 - y1) + 2 }} />);
+      if (b.x0 >= a.x1 + 0.8) {
+        const xc = Math.max(a.x1 + 0.4, b.x0 - 1.2);
+        h(a.x1, xc, a.y); v(xc, a.y, b.y); h(xc, b.x0, b.y, pad);
+      } else {
+        const xr = a.x1 + 0.4, xl = Math.max(0, b.x0 - 0.8);
+        const ymid = b.y > a.y ? b.y - ROW_T / 2 : b.y + ROW_T / 2;
+        h(a.x1, xr, a.y); v(xr, a.y, ymid); h(xl, xr, ymid); v(xl, ymid, b.y); h(xl, b.x0, b.y, pad);
+      }
+      segs.push(<div key={`${i}-arrow`} className="g-arrow" data-critical={crit} style={{ left: `${b.x0}%`, marginLeft: byId.get(l.to)?.milestone ? -13 : -7, top: b.y - 5, opacity: dim ? 0.1 : 1 }} />);
     });
   }
 
