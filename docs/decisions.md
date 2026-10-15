@@ -1,6 +1,6 @@
 # Décisions techniques
 
-État au 13/10/2026. Une décision « tranchée » ne se rediscute qu'avec Tom A. ; une décision « ouverte » a une
+État au 15/10/2026. Une décision « tranchée » ne se rediscute qu'avec Tom A. ; une décision « ouverte » a une
 valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 
 ## Tranchées
@@ -10,8 +10,8 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | D1 | Hébergement | **Cassiopée (prod SiOps)**, voir `cassiopee-guide-ia.md` | Contrainte du projet. Gratuit, HTTPS fourni, Postgres managé. |
 | D2 | Forme du déploiement | **Une seule image Docker** : le serveur Rust sert l'API (`/api/*`), le MCP (`/mcp`) et les fichiers du front. Une Application `Deployment`, un Endpoint, une base. | Moins de ressources consommées sur le quota, un seul endpoint, pas de CORS. |
 | D3 | Langage | **Rust (serveur) + TypeScript (front React)**. | Rust : binaire ~20 Mo, mémoire divisée, pas de churn npm côté serveur ; React gardé pour les maquettes et la maintenance. Choix de Tom A., assumé. |
-| D4 | Serveur | **Axum + tokio + sqlx**, validation des entrées avec **serde + validator**. | Léger (~50 Mo, limite 256Mi large), requêtes vérifiées à la compile, simple. |
-| D5 | Front | **React + Vite** (SPA), **TanStack Query** pour les données, CSS simple avec les jetons de couleur des maquettes. | Écosystème le mieux connu de Claude Code ; le Gantt et les graphes se dessinent en SVG/React. |
+| D4 | Serveur | **Axum + tokio + sqlx**, validation des entrées avec **serde + validator**. Requêtes sqlx **à l'exécution** (`query` / `query_as`), pas de macros `query!` : le build Docker tourne en `SQLX_OFFLINE=true` sans dossier `.sqlx/`. | Léger (~50 Mo, limite 256Mi large), simple ; pas de base nécessaire au build (CI, Docker). Passer aux macros imposerait `cargo sqlx prepare` et de committer `.sqlx/`. |
+| D5 | Front | **React + Vite** (SPA), **TanStack Query** pour les données, **Mantine 9** (composants, dates, formulaires, notifications, `@mantine/charts` sur recharts) + `@tabler/icons-react`. Jetons des maquettes dans `web/src/theme.tsx`, mappés sur Mantine dans `web/src/mantine-theme.ts`. Gantt dessiné à la main en SVG/React. | Écosystème le mieux connu de Claude Code ; Mantine apporte dark mode, toasts, sélecteurs de dates et graphes sans tout réécrire, ce que le CSS simple initial ne couvrait pas (commit `ca25692`). |
 | D6 | Base | **PostgreSQL 16** sur Cassiopée (`storage_size` 1Gi, à ajuster selon `/quota`), **sqlx** + migrations versionnées, appliquées au démarrage du serveur. Colonnes d'heures en `DOUBLE PRECISION`. | Base managée et persistante ; les migrations au démarrage évitent tout accès manuel au cluster. |
 | D7 | Logique métier | Fonctions **pures** dans `src/domain/` (jours ouvrés, charge, décalage, chemin critique, alertes, validation), testées avec **`cargo test`**. | Ce sont les règles qui comptent pour la soutenance ; elles doivent être justes et prouvées. |
 | D8 | Connexion | **E-mail + mot de passe** (argon2id), sessions en cookie `HttpOnly; Secure; SameSite=Lax` stockées en base. Comptes créés par le chef de projet. | Pas de SMTP pour un lien magique, pas de client OAuth Google à enregistrer. 6 utilisateurs. |
