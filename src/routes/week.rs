@@ -47,7 +47,8 @@ pub async fn my_week(
     let week = q.week.unwrap_or_else(|| project_week(today_paris()));
     let (wmon, wsun) = week_bounds(week);
 
-    let rows: Vec<(uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, String, f64)> = sqlx::query_as(
+    type Row = (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, String, f64);
+    let rows: Vec<Row> = sqlx::query_as(
         "SELECT t.id, t.title, t.axis_code, t.start_date, t.end_date, t.status, t.done_criteria, a.role, a.planned_hours
          FROM tasks t JOIN assignments a ON a.task_id = t.id
          WHERE a.user_id = $1 AND t.start_date <= $2 AND t.end_date >= $3

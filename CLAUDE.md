@@ -49,7 +49,7 @@ ne passent pas par le proxy Vite : les appeler directement sur `:8080`.
 
 - `src/main.rs` : config → pool (5 connexions) → `sqlx::migrate!("./db/migrations")` → `routes::router`.
 - `src/routes/mod.rs` : `AppState`, table de routage complète (`build()`), lecture du cookie `sid` et du
-  `Bearer`. Un module par ressource. `router_with_code` existe pour de futurs tests d'API (aucun pour l'instant).
+  `Bearer`. Un module par ressource. État construit depuis `Config` (`src/config.rs`). Aucun test d'API.
 - `src/mcp.rs` : serveur `rmcp` stateless sous `/mcp`, mêmes règles et rôles que la REST.
 - `src/domain/` : fonctions pures testées ; les routes y délèguent les calculs.
 - `src/web.rs` : lit `web/dist` **relativement au dossier courant** (lancer depuis la racine), fallback SPA

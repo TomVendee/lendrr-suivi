@@ -18,7 +18,8 @@ pub async fn list(State(s): State<AppState>, headers: HeaderMap) -> impl IntoRes
     if role != "pilot" {
         return (StatusCode::FORBIDDEN, Json(json!({"error": "pilot-only"}))).into_response();
     }
-    let rows: Vec<(uuid::Uuid, Option<uuid::Uuid>, serde_json::Value, String, Option<uuid::Uuid>, chrono::DateTime<chrono::Utc>)> =
+    type Row = (uuid::Uuid, Option<uuid::Uuid>, serde_json::Value, String, Option<uuid::Uuid>, chrono::DateTime<chrono::Utc>);
+    let rows: Vec<Row> =
         sqlx::query_as("SELECT id, task_id, payload, status, created_by, created_at FROM task_revisions WHERE status='pending' ORDER BY created_at")
             .fetch_all(&s.pool)
             .await

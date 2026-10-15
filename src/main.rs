@@ -26,8 +26,8 @@ async fn main() {
         .await
         .expect("migrations failed");
 
-    let app = routes::router(pool);
     let addr: SocketAddr = format!("0.0.0.0:{}", cfg.port).parse().expect("bad port");
+    let app = routes::router(pool, cfg);
     tracing::info!("listening on {addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();

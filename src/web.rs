@@ -1,6 +1,6 @@
 use axum::{
     http::{StatusCode, Uri, header},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
 
 const HELLO: &str = r#"<!doctype html><html lang="fr"><head><meta charset="utf-8">
@@ -23,13 +23,13 @@ fn mime(path: &str) -> &'static str {
     else { "application/octet-stream" }
 }
 
-fn file(path: &str) -> Option<(StatusCode, [(axum::http::HeaderName, &'static str); 1], Vec<u8>)> {
+fn file(path: &str) -> Option<Response> {
     // Anti-remontée : le chemin reste sous web/dist.
     if path.contains("..") {
         return None;
     }
     let body = std::fs::read(format!("web/dist{path}")).ok()?;
-    Some((StatusCode::OK, [(header::CONTENT_TYPE, mime(path))], body))
+    Some(([(header::CONTENT_TYPE, mime(path))], body).into_response())
 }
 
 /// Sert `web/dist` (build Vite) avec les bons Content-Type, sinon la page hello.
@@ -41,14 +41,11 @@ pub async fn fallback(uri: Uri) -> impl IntoResponse {
     }
     if path != "/" {
         if let Some(f) = file(path) {
-            return f.into_response();
+            return f;
         }
-        if let Some(mut f) = file("/index.html") {
-            f.0 = StatusCode::OK;
-            return f.into_response();
-        }
-    } else if let Some(f) = file("/index.html") {
-        return f.into_response();
+    }
+    if let Some(f) = file("/index.html") {
+        return f;
     }
     (StatusCode::OK, [(header::CONTENT_TYPE, "text/html; charset=utf-8")], HELLO.as_bytes().to_vec()).into_response()
 }

@@ -12,6 +12,9 @@ use validator::Validate;
 use super::{AppState, current_user};
 use crate::domain::validation::{can_validate, valid_axis};
 
+/// Colonnes publiées d'une tâche, dans l'ordre des SELECT de ce module.
+type TaskRow = (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool);
+
 #[derive(Serialize)]
 pub struct AssignmentOut {
     pub user_id: uuid::Uuid,
@@ -180,7 +183,7 @@ pub async fn list(
         q += &format!(" AND title ILIKE ${n}");
     }
     q += " ORDER BY start_date LIMIT 500";
-    let mut query = sqlx::query_as::<_, (uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool)>(&q);
+    let mut query = sqlx::query_as::<_, TaskRow>(&q);
     if let Some(a) = f.axis {
         query = query.bind(a);
     }
@@ -194,23 +197,14 @@ pub async fn list(
     }
     let rows = query.fetch_all(&s.pool).await.unwrap_or_default();
     let mut out = vec![];
-    for (id, title, axis_code, start_date, end_date, status, done_criteria, milestone) in rows {
-        out.push(task_out(&s.pool, id, title, axis_code, start_date, end_date, status, done_criteria, milestone).await);
+    for row in rows {
+        out.push(task_out(&s.pool, row).await);
     }
     (StatusCode::OK, Json(out)).into_response()
 }
 
-async fn task_out(
-    pool: &sqlx::PgPool,
-    id: uuid::Uuid,
-    title: String,
-    axis_code: String,
-    start_date: NaiveDate,
-    end_date: NaiveDate,
-    status: String,
-    done_criteria: String,
-    milestone: bool,
-) -> TaskOut {
+async fn task_out(pool: &sqlx::PgPool, row: TaskRow) -> TaskOut {
+    let (id, title, axis_code, start_date, end_date, status, done_criteria, milestone) = row;
     let assigns: Vec<(uuid::Uuid, String, f64)> =
         sqlx::query_as("SELECT user_id, role, planned_hours FROM assignments WHERE task_id = $1")
             .bind(id)
@@ -250,17 +244,14 @@ pub async fn get(
     if current_user(&s.pool, &headers).await.is_err() {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     }
-    let row: Option<(uuid::Uuid, String, String, NaiveDate, NaiveDate, String, String, bool)> =
+    let row: Option<TaskRow> =
         sqlx::query_as("SELECT id, title, axis_code, start_date, end_date, status, done_criteria, milestone FROM tasks WHERE id = $1")
             .bind(id)
             .fetch_optional(&s.pool)
             .await
             .unwrap_or(None);
     match row {
-        Some((id, title, axis, sd, ed, st, crit, ms)) => {
-            (StatusCode::OK, Json(task_out(&s.pool, id, title, axis, sd, ed, st, crit, ms).await))
-                .into_response()
-        }
+        Some(row) => (StatusCode::OK, Json(task_out(&s.pool, row).await)).into_response(),
         None => (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response(),
     }
 }
@@ -282,7 +273,7 @@ pub async fn create(
     }
     // Validation active (défaut) : un membre ne publie pas, il propose (202 + révision).
     if role != "pilot" {
-        let rev: uuid::Uuid = sqlx::query_scalar(
+        let rev: Result<uuid::Uuid, _> = sqlx::query_scalar(
             "INSERT INTO task_revisions (task_id, payload, created_by)
              VALUES (NULL, $1, $2) RETURNING id",
         )
@@ -296,9 +287,13 @@ pub async fn create(
         }))
         .bind(uid)
         .fetch_one(&s.pool)
-        .await
-        .unwrap_or_else(|_| uuid::Uuid::nil());
-        return (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation"}))).into_response();
+        .await;
+        // Proposition non enregistrée : le dire, sinon le membre la croit en attente.
+        return match rev {
+            Ok(rev) => (StatusCode::ACCEPTED, Json(json!({"status": "pending-validation", "revision_id": rev})))
+                .into_response(),
+            Err(_) => (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response(),
+        };
     }
     let milestone = input.milestone.unwrap_or(false);
     // Tâche + assignations en une transaction : jamais de tâche sans pilote.

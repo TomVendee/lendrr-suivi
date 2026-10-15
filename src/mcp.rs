@@ -90,7 +90,8 @@ impl SuiviMcp {
         let (uid, _) = user_from_parts(&self.pool, &parts).await?;
         let week = args.week.unwrap_or_else(|| project_week(today_paris()));
         let (wmon, wsun) = week_bounds(week);
-        let rows: Vec<(uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, String, f64)> =
+        type Row = (uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, String, f64);
+        let rows: Vec<Row> =
             sqlx::query_as(
                 "SELECT t.id, t.title, t.axis_code, t.start_date, t.end_date, t.status, a.role, a.planned_hours
                  FROM tasks t JOIN assignments a ON a.task_id = t.id

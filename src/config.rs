@@ -3,7 +3,8 @@
 pub struct Config {
     pub database_url: String,
     pub port: u16,
-    pub app_url: String,
+    /// `Secure` sur les cookies sauf si `APP_URL` est en http (dev local). Absent → `Secure`.
+    pub secure_cookies: bool,
     /// Code temporaire pour /setup. Retiré par PUT après création du 1er compte.
     pub setup_code: Option<String>,
 }
@@ -19,7 +20,7 @@ impl Config {
                 "postgres://postgres:postgres@localhost:5432/app".to_string()
             }),
             port,
-            app_url: std::env::var("APP_URL").unwrap_or_else(|_| format!("http://localhost:{port}")),
+            secure_cookies: !std::env::var("APP_URL").unwrap_or_default().starts_with("http://"),
             setup_code: std::env::var("SETUP_CODE").ok().filter(|s| !s.is_empty()),
         }
     }

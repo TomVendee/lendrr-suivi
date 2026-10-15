@@ -26,21 +26,13 @@ pub struct AppState {
     pub secure_cookies: bool,
 }
 
-/// Routeur prod : config lue dans l'environnement (Cassiopée met tout en chaînes).
-pub fn router(pool: PgPool) -> Router {
-    let secure = !std::env::var("APP_URL").unwrap_or_default().starts_with("http://");
+/// Routeur : état construit depuis la config lue dans l'environnement.
+pub fn router(pool: PgPool, cfg: crate::config::Config) -> Router {
     let state = AppState {
         pool: pool.clone(),
-        setup_code: std::env::var("SETUP_CODE").ok().filter(|s| !s.is_empty()),
-        secure_cookies: secure,
+        setup_code: cfg.setup_code,
+        secure_cookies: cfg.secure_cookies,
     };
-    let mcp_service = crate::mcp::streamable_service(pool);
-    build(state, mcp_service)
-}
-
-/// Variante de test : code setup injecté, cookies `Secure` (comportement prod).
-pub fn router_with_code(pool: PgPool, setup_code: Option<String>) -> Router {
-    let state = AppState { pool: pool.clone(), setup_code, secure_cookies: true };
     let mcp_service = crate::mcp::streamable_service(pool);
     build(state, mcp_service)
 }
