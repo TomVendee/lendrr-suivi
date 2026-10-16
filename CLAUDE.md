@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 App web de suivi de planning pour l'équipe du projet EPITA SIGL « casier connecté LENDRR » (6 personnes).
 Elle **remplace Asana** : tâches, dépendances avec décalage automatique, heures prévues et réelles, plan de
 charge, alertes, Gantt avec chemin critique, météo par axe, synthèse hebdo et export pour la soutenance.
-Déployée sur **Cassiopée**, la plateforme Kubernetes en libre-service de l'EPITA.
+Déployée sur **Coolify** (`coolify.myth2logics.dev`, projet IPV6-SIGL › production) : `https://planning.ipv6-sigl.fr`.
 
 Le développeur est Tom A. (chef de projet de l'équipe). Il écrit en français ; réponds-lui en français.
 
@@ -17,7 +17,7 @@ Le développeur est Tom A. (chef de projet de l'équipe). Il écrit en français
 2. `docs/decisions.md` : la stack et les choix tranchés (D1 à D20), les risques acceptés, les points ouverts.
 3. `docs/maquettes/README.md` puis le `.dc.html` de l'écran concerné : structure, contenu et comportement
    attendus. Le visuel suit la DA « Précision » (D23), pas les maquettes.
-4. `docs/cassiopee-guide-ia.md` : **avant toute action de déploiement**. Il fait foi sur Cassiopée.
+4. `docs/cassiopee-guide-ia.md` : **obsolète** (Cassiopée abandonnée, voir `decisions.md` D1).
 5. `docs/mcp.md` (contrat MCP, D18) et `docs/import-format.md` (format d'import) si on touche à ces parties.
 
 `docs/` ne se modifie pas sans accord, sauf `decisions.md`.
@@ -116,7 +116,7 @@ Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limi
 ## Méthode de travail
 
 - **Une fonction du cahier à la fois, dans l'ordre 1 → 11.** Commence par le socle (projet, base, auth, page
-  `/setup`, déploiement « hello » sur Cassiopée) avant la fonction 1, pour que chaque fonction soit livrable.
+  `/setup`, déploiement « hello » sur Coolify) avant la fonction 1, pour que chaque fonction soit livrable.
 - Pour chaque fonction : propose d'abord un plan court (données, routes, écrans, tests) et **attends l'accord
   de Tom A.** ; puis tests du domaine, puis API, puis écran d'après la maquette.
 - **Terminé** = tests verts (`cargo test`), clippy et types sans erreur, l'écran reprend la structure et le
@@ -126,34 +126,16 @@ Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limi
 - Si une règle du cahier est ambiguë, pose la question au lieu d'inventer ; note la réponse dans
   `docs/decisions.md`.
 
-## Déploiement sur Cassiopée
+## Déploiement sur Coolify
 
-Lire `docs/cassiopee-guide-ia.md` en entier d'abord. Points non négociables :
+Action manuelle de Tom A. dans l'interface Coolify (pas de script, pas de jeton dans le dépôt) :
 
-- **Le jeton Keycloak vient de Tom A.** : ne le demande jamais dans le chat, ne l'écris dans aucun fichier du
-  dépôt, ne le passe pas en argument. Le script de déploiement le lit dans un fichier **hors dépôt** dont le
-  chemin est donné par la variable `CASSIOPEE_TOKEN_FILE`, écrit un fichier de config `curl` temporaire
-  (`--config`, permissions 600) et le supprime après.
-- **Avant tout `POST`, `PUT`, `DELETE` ou `suspend`** : lire `GET /quota`, dire exactement ce qui va être créé
-  ou modifié, **attendre l'accord explicite** de Tom A. Ne jamais supprimer la base.
-- Après chaque écriture : sonder `/status` jusqu'à `deployed`, puis `curl -I` sur l'URL. Un `202` n'est pas un
-  déploiement réussi.
-- Noms (décision D12) : base `iplanner-db` (PostgreSQL 16, `db_name` `app`), application `iplanner`,
-  endpoint `iplanner`. Tout en minuscules.
-- Application : image publique `ghcr.io/<compte>/lendrr-suivi:<version>` (jamais `latest`), `service`
-  `{"port": 80, "target_port": 8080}`, sonde readiness `/ready` sur 8080, limites à valider avec `/quota`.
-  Après le `POST`, relire avec `GET` : si `service` est `null`, le renvoyer en `PUT` (écart connu).
-- `env` est stocké **en clair** chez Cassiopée et chaque `PUT` le remplace en entier : n'y mettre que
-  `DATABASE_URL`, `NODE_ENV`, `PORT`, `APP_URL` et, temporairement, `SETUP_CODE`. Les valeurs secrètes sont lues
-  dans un fichier local hors dépôt (`LENDRR_ENV_FILE`) au moment du déploiement, jamais commitées.
-- La chaîne de connexion de la base n'est montrée **qu'une fois**, à la création : demande à Tom A. de la
-  ranger dans son fichier hors dépôt, ne l'affiche pas une seconde fois et ne la journalise pas.
-- Le pipeline GitHub Actions build et publie l'image ; le déploiement sur Cassiopée reste une action
-  manuelle lancée par Tom A. (le jeton n'est pas mis dans GitHub).
-- `deploy/deploy.sh` lit aussi `IMAGE_TAG` (ex. `sha-abc1234`) dans `LENDRR_ENV_FILE` ; `IMAGE_REPO` vaut
-  encore `ghcr.io/REMPLACER/...` par défaut : à fixer avant le premier déploiement.
-- Incident Cinder du 13/10/2026 : ressources `iplanner*` supprimées, à recréer après réparation (voir
-  `decisions.md`, points ouverts).
+- Base : PostgreSQL 16 `planning-db` (base `app`), URL interne donnée par Coolify.
+- Application : image publique `ghcr.io/<compte>/lendrr-suivi:sha-xxxxxxx` (jamais `latest`), publiée par la CI
+  (`.github/workflows/image.yml`). Port exposé 8080, domaine `https://planning.ipv6-sigl.fr`, healthcheck `/ready`.
+- Variables : `DATABASE_URL`, `PORT=8080`, `APP_URL=https://planning.ipv6-sigl.fr` et, le temps de créer le
+  premier compte, `SETUP_CODE` (à retirer ensuite, puis redéployer).
+- Mise à jour : changer le tag de l'image dans Coolify puis redéployer. Ne jamais supprimer la base.
 
 ## Import Asana (fonction 4)
 

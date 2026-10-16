@@ -7,7 +7,7 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 
 | # | Sujet | Décision | Pourquoi |
 | --- | --- | --- | --- |
-| D1 | Hébergement | **Cassiopée (prod SiOps)**, voir `cassiopee-guide-ia.md` | Contrainte du projet. Gratuit, HTTPS fourni, Postgres managé. |
+| D1 | Hébergement | **Coolify** (`coolify.myth2logics.dev`, projet IPV6-SIGL › production), `https://planning.ipv6-sigl.fr`. Remplace Cassiopée (16/10/2026, suite à l'incident Cinder). | Cassiopée indisponible pour les apps avec base ; Coolify déjà utilisé par l'équipe. |
 | D2 | Forme du déploiement | **Une seule image Docker** : le serveur Rust sert l'API (`/api/*`), le MCP (`/mcp`) et les fichiers du front. Une Application `Deployment`, un Endpoint, une base. | Moins de ressources consommées sur le quota, un seul endpoint, pas de CORS. |
 | D3 | Langage | **Rust (serveur) + TypeScript (front React)**. | Rust : binaire ~20 Mo, mémoire divisée, pas de churn npm côté serveur ; React gardé pour les maquettes et la maintenance. Choix de Tom A., assumé. |
 | D4 | Serveur | **Axum + tokio + sqlx**, validation des entrées avec **serde + validator**. Requêtes sqlx **à l'exécution** (`query` / `query_as`), pas de macros `query!` : le build Docker tourne en `SQLX_OFFLINE=true` sans dossier `.sqlx/`. | Léger (~50 Mo, limite 256Mi large), simple ; pas de base nécessaire au build (CI, Docker). Passer aux macros imposerait `cargo sqlx prepare` et de committer `.sqlx/`. |
@@ -18,7 +18,7 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | D9 | Premier compte | Page `/setup` active **seulement tant qu'aucun utilisateur n'existe**, protégée par un code `SETUP_CODE` passé en variable d'environnement, retirée après usage. | Cassiopée ne donne aucun accès shell au pod : impossible de lancer une commande de création d'admin. |
 | D10 | Images | Construites par **GitHub Actions**, publiées sur **ghcr.io en paquet public**, tag = version ou SHA court, **jamais `latest`**. | Cassiopée n'accepte que des images publiques déjà construites. |
 | D11 | Conteneur | Build `rust:1.90-slim`, run `debian:12-slim`, utilisateur `appuser` (UID 1000), écoute sur **8080**, sondes `/health` (vivant) et `/ready` (base joignable). | Règles non-root et port > 1024 de Cassiopée. |
-| D12 | Noms Cassiopée | Base `iplanner-db` (hôte interne `iplanner-db-postgresql`), application `iplanner`, endpoint `iplanner` → `https://iplanner.cassiopee.siops.sigl.epita.fr`. | Noms courts sans tiret (les noms avec `-` restaient bloqués en `provisioning`, 13/10/2026) ; tout en minuscules. |
+| D12 | Noms | Base `planning-db` (PostgreSQL 16, `db_name` `app`), application `lendrr-planning`, domaine `planning.ipv6-sigl.fr`. | Remplace les noms Cassiopée `iplanner*`. |
 | D13 | Mode de décalage | **Seulement en cas de chevauchement**, en jours ouvrés. Les jalons ne bougent jamais seuls. | Déjà fixé dans le cahier. |
 | D14 | Mise à jour | **Pas de temps réel en V1** : rechargement des données au retour sur l'onglet et toutes les 60 s (TanStack Query). | Simplicité ; 6 utilisateurs. |
 | D15 | Synthèse hebdo | **Texte à trous** rempli par l'app, que le chef de projet relit. Pas de clé d'API d'IA en V1. | Gratuit, pas de secret à stocker. |
