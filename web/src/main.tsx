@@ -22,7 +22,7 @@ const schemeManager = localStorageColorSchemeManager({ key: "suivi-color-scheme"
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ColorSchemeScript defaultColorScheme="auto" />
+    <ColorSchemeScript defaultColorScheme="auto" localStorageKey="suivi-color-scheme" />
     <MantineProvider theme={theme} cssVariablesResolver={resolver} defaultColorScheme="auto" colorSchemeManager={schemeManager}>
       <Notifications position="bottom-center" />
       <QueryClientProvider client={qc}>

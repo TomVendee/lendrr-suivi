@@ -7,6 +7,9 @@ import { createTheme, type CSSVariablesResolver } from "@mantine/core";
 export const theme = createTheme({
   primaryColor: "brand",
   primaryShade: { light: 6, dark: 4 },
+  // Texte noir ou blanc selon la luminance du fond : le bouton plein clair du thème sombre reste lisible.
+  autoContrast: true,
+  luminanceThreshold: 0.25,
   colors: {
     brand: [
       "#EEF0FF", "#E0E3FF", "#C7CBFE", "#A5ABFC", "#8287F8",

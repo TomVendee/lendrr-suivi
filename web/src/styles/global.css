@@ -83,3 +83,9 @@ a:hover { color: var(--accent-hover); }
   transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
 }
 .chip-add:active { transform: scale(0.96); background: var(--accent-soft); }
+
+/* Thème sombre : les boutons pleins de Mantine posent du blanc sur un fond clair (3,1:1).
+   On lui substitue le texte sombre des jetons (≥ 6:1). Mantine écrit cette variable en ligne, d'où !important. */
+:root[data-mantine-color-scheme="dark"] .mantine-Button-root[style*="--button-color: var(--mantine-color-white)"] {
+  --button-color: var(--on-accent) !important;
+}
