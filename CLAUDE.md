@@ -135,9 +135,13 @@ pas de healthcheck Coolify (l'image n'a ni `curl` ni `wget`). Variables : `DATAB
 `APP_URL=https://planning.ipv6-sigl.fr` (+ `SETUP_CODE` le temps du premier compte, puis retiré).
 Ne jamais supprimer la base.
 
-- **CD (D25)** : à chaque push sur `main`, la CI teste, publie l'image, appelle l'API de déploiement de Coolify
-  (secret GitHub `COOLIFY_TOKEN`, jeton limité au déploiement) puis attend que `GET /api/hello` renvoie le `sha` du
-  commit. Sans le secret, l'étape est ignorée et le déploiement reste manuel. Coolify doit suivre le tag `main`.
+- **Déploiement : manuel pour l'instant.** Tom A. donne le feu vert, on met le tag `sha-xxxxxxx` dans Coolify
+  (Docker Image Tag) et on redéploie, puis on vérifie `/ready`, l'API et le MCP.
+- **CD (D25) : écrite, inactive.** Elle s'activera quand l'API de Coolify sera activée par l'administrateur de
+  l'instance et que le secret GitHub `COOLIFY_TOKEN` (jeton limité à « deploy ») existera. La CI appellera alors
+  l'API de déploiement après les tests et attendra que `GET /api/hello` renvoie le `sha` du commit ; Coolify
+  devra suivre le tag `main`. Sans le secret, l'étape est ignorée. Coolify n'a pas d'« auto deploy » pour une
+  application de type Docker Image (réservé aux applications Git, qui construiraient l'image sur le serveur).
 - **Manuel / rollback** : dans Coolify, mettre le tag de l'image sur un `sha-xxxxxxx` précis et redéployer ; la CD
   suivante le remettra sur `main` si on y retourne.
 - Aucun jeton dans le dépôt, les journaux ou le chat. Le jeton Coolify est créé par l'administrateur de l'instance.
