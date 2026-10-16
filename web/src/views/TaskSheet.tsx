@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Checkbox, NumberInput, SegmentedControl, Select, TextInput, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
+import { IconArrowBackUp, IconCheck, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { api, fmtDate, fmtH, initials, useMe, useSettings, useUsers, type Task } from "../api";
 import { Sheet } from "../Shell";
+import { toastUndo } from "../motion";
 import { AXES, AxisChip, StatusPill, line, muted } from "../theme";
 
 interface Draft {
@@ -226,14 +227,16 @@ export function TaskDetailSheet({ id, onClose, role, nameOf }: {
     await api("/api/dependencies", { method: "DELETE", body: JSON.stringify({ pred_id, succ_id: id }) });
     refreshAll(qc, id);
   };
-  const setStatus = async (status: string) => {
+  const setStatus = async (status: string, undoable = true) => {
     if (!t || status === t.status) return;
+    const before = t.status;
     await qc.cancelQueries({ queryKey: ["task", id] });
     const prev = qc.getQueryData<Task>(["task", id]);
     qc.setQueryData<Task>(["task", id], (x) => x && { ...x, status });
     try {
       await api(`/api/tasks/${id}/status`, { method: "POST", body: JSON.stringify({ status }) });
       refreshAll(qc, id);
+      if (t.milestone && undoable) toastUndo(status === "done" ? "Jalon marqué atteint" : "Jalon rouvert", () => setStatus(before, false));
     } catch {
       qc.setQueryData(["task", id], prev);
       notifications.show({ message: "Statut non enregistré. Réessaie.", color: "crit" });
@@ -273,9 +276,22 @@ export function TaskDetailSheet({ id, onClose, role, nameOf }: {
             )}
           </div>
 
-          {!t.milestone && (canStatus ? (
-            <SegmentedControl fullWidth value={t.status} onChange={setStatus} data={STATUSES} aria-label="Statut de la tâche" />
-          ) : <div><StatusPill status={t.status} /></div>)}
+          {t.milestone ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: t.status === "done" ? "var(--ok-text)" : muted }}>
+                {t.status === "done" ? "Jalon atteint" : "Jalon à venir"}
+              </span>
+              {canStatus && (
+                <Button size="xs" ml="auto" variant={t.status === "done" ? "default" : "filled"}
+                  leftSection={t.status === "done" ? <IconArrowBackUp size={14} stroke={1.6} /> : <IconCheck size={14} stroke={1.6} />}
+                  onClick={() => setStatus(t.status === "done" ? "todo" : "done")}>
+                  {t.status === "done" ? "Rouvrir le jalon" : "Marquer le jalon atteint"}
+                </Button>
+              )}
+            </div>
+          ) : canStatus ? (
+            <SegmentedControl fullWidth value={t.status} onChange={(v) => setStatus(v)} data={STATUSES} aria-label="Statut de la tâche" />
+          ) : <div><StatusPill status={t.status} /></div>}
 
           <section aria-label="Description">
             {t.description
