@@ -98,15 +98,6 @@ export function Reglages() {
 
       <Capacites users={users.data ?? []} />
 
-      <section aria-labelledby="ia-titre" style={{ ...card, padding: "8px 24px 16px" }}>
-        <h2 id="ia-titre" style={{ margin: "14px 0 4px", fontFamily: F_TITRE, fontSize: 20, fontWeight: 600 }}>Accès IA</h2>
-        <p style={{ color: muted, fontSize: 14 }}>Token personnel pour Claude / Cowork via <code style={{ fontFamily: F_MONO }}>POST /mcp</code>. Affiché une seule fois.</p>
-        <Button variant="default" onClick={() => act(async () => {
-          const r = await api<{ token: string }>("/api/tokens", { method: "POST" });
-          setMsg(`Token à copier maintenant : ${r.token}`);
-        }, "")}>Créer un token</Button>
-      </section>
-
       {msg && <p role="status" style={{ ...card, background: C.warnFond, wordBreak: "break-all" }}>{msg}</p>}
     </>
   );

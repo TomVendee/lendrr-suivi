@@ -130,12 +130,27 @@ pub async fn change_password(State(s): State<AppState>, headers: HeaderMap, Json
     (StatusCode::OK, Json(json!({"ok": true}))).into_response()
 }
 
+#[derive(Deserialize, Validate, Default)]
+pub struct CreateTokenIn {
+    #[validate(length(max = 60))]
+    pub label: Option<String>,
+}
+
 /// Crée un token API/MCP personnel, affiché **une seule fois** (D18).
 /// Stocké hashé SHA-256, révocable. Sert aussi au MCP (`Authorization: Bearer`).
-pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+/// Corps facultatif : `{"label": "Claude Code"}`.
+pub async fn create_token(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    input: Option<Json<CreateTokenIn>>,
+) -> impl IntoResponse {
     let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
+    let input = input.map(|Json(i)| i).unwrap_or_default();
+    if input.validate().is_err() {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-input"}))).into_response();
+    }
     use base64::Engine;
     use rand::RngCore;
     let mut raw = [0u8; 32];
@@ -143,14 +158,34 @@ pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl
     let token = format!("ls_{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw));
     let digest = super::sha256_hex(&token);
     let id: uuid::Uuid = sqlx::query_scalar(
-        "INSERT INTO api_tokens (user_id, token_hash) VALUES ($1,$2) RETURNING id",
+        "INSERT INTO api_tokens (user_id, token_hash, label) VALUES ($1,$2,$3) RETURNING id",
     )
     .bind(uid)
     .bind(digest)
+    .bind(input.label.unwrap_or_default().trim())
     .fetch_one(&s.pool)
     .await
     .unwrap();
     (StatusCode::CREATED, Json(json!({"id": id, "token": token}))).into_response()
+}
+
+/// Ses tokens actifs (jamais la valeur, seulement nom et date de création).
+pub async fn list_tokens(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    let rows: Vec<(uuid::Uuid, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT id, label, created_at FROM api_tokens WHERE user_id = $1 AND NOT revoked ORDER BY created_at DESC",
+    )
+    .bind(uid)
+    .fetch_all(&s.pool)
+    .await
+    .unwrap_or_default();
+    let out: Vec<_> = rows
+        .iter()
+        .map(|(id, label, at)| json!({"id": id, "label": label, "created_at": at}))
+        .collect();
+    (StatusCode::OK, Json(out)).into_response()
 }
 
 /// Révoque un de ses tokens (D18). Le token cesse de fonctionner aussitôt.

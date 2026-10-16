@@ -3,11 +3,12 @@ import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, Button, Drawer, Menu, Modal, PasswordInput, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
-  IconChevronRight, IconDots, IconGridDots, IconKey, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
+  IconChevronRight, IconDots, IconGridDots, IconKey, IconKeyboard, IconRobot, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
   IconLogout, IconMoon, IconSearch, IconSun,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { api, initials, useSettings, type Me } from "./api";
+import { TokenManager } from "./Tokens";
 import { CommandPalette, MOD, openSearch } from "./CommandPalette";
 import { LockerMark, NAV, navFor, type NavItem } from "./nav";
 import type { View } from "./router";
@@ -223,11 +224,15 @@ function PasswordForm({ onDone }: { onDone: () => void }) {
 
 function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; compact?: boolean }) {
   const [pwd, setPwd] = useState(false);
+  const [ia, setIa] = useState(false);
   const avatar = <Avatar size={compact ? 30 : 28} radius="xl" color={me.role === "pilot" ? "brand" : "gray"}>{initials(me.name)}</Avatar>;
   return (
     <>
     <Sheet opened={pwd} onClose={() => setPwd(false)} title="Changer mon mot de passe">
       <PasswordForm onDone={() => setPwd(false)} />
+    </Sheet>
+    <Sheet opened={ia} onClose={() => setIa(false)} title="Accès IA">
+      <TokenManager />
     </Sheet>
     <Menu position={compact ? "bottom-end" : "top-start"} width={220} radius="md" shadow="md">
       <Menu.Target>
@@ -251,6 +256,7 @@ function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; com
           Raccourcis clavier
         </Menu.Item>
         <Menu.Item leftSection={<IconKey size={16} stroke={1.6} />} onClick={() => setPwd(true)}>Mot de passe</Menu.Item>
+        <Menu.Item leftSection={<IconRobot size={16} stroke={1.6} />} onClick={() => setIa(true)}>Accès IA</Menu.Item>
         <Menu.Item leftSection={<IconLogout size={16} stroke={1.6} />} onClick={onLogout}>Se déconnecter</Menu.Item>
       </Menu.Dropdown>
     </Menu>
