@@ -73,7 +73,11 @@ fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
         .route("/api/baselines", post(report::take_baseline))
         .route("/api/synthesis", get(report::synthesis))
         .route("/api/export", get(report::export))
-        .nest_service("/mcp", mcp_service)
+        .merge(
+            Router::new()
+                .nest_service("/mcp", mcp_service)
+                .layer(axum::middleware::from_fn_with_state(state.clone(), require_token)),
+        )
         .fallback(crate::web::fallback)
         .with_state(state)
 }
@@ -96,6 +100,34 @@ async fn ready(
 
 async fn hello() -> impl IntoResponse {
     Json(json!({"name": "Suivi projet", "version": env!("CARGO_PKG_VERSION")}))
+}
+
+/// Barrière du MCP : aucune méthode (`initialize`, `tools/list`, `tools/call`) sans token valide non révoqué.
+async fn require_token(
+    axum::extract::State(s): axum::extract::State<AppState>,
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let ok = match bearer(req.headers()) {
+        Some(t) => sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM api_tokens WHERE token_hash = $1 AND NOT revoked)",
+        )
+        .bind(sha256_hex(&t))
+        .fetch_one(&s.pool)
+        .await
+        .unwrap_or(false),
+        None => false,
+    };
+    if ok {
+        next.run(req).await
+    } else {
+        (
+            StatusCode::UNAUTHORIZED,
+            [(axum::http::header::WWW_AUTHENTICATE, "Bearer")],
+            Json(json!({"error": "unauthorized"})),
+        )
+            .into_response()
+    }
 }
 
 /// Extrait le `sid` du cookie, sans jamais lever.
