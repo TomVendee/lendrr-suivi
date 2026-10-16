@@ -93,6 +93,43 @@ pub async fn me(State(s): State<AppState>, headers: HeaderMap) -> impl IntoRespo
     }
 }
 
+#[derive(Deserialize, Validate)]
+pub struct ChangePasswordIn {
+    pub current: String,
+    #[validate(length(min = 10))]
+    pub new: String,
+}
+
+/// Changement de son propre mot de passe : exige l'ancien, ferme les autres sessions.
+pub async fn change_password(State(s): State<AppState>, headers: HeaderMap, Json(input): Json<ChangePasswordIn>) -> impl IntoResponse {
+    let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    if input.validate().is_err() {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-input"}))).into_response();
+    }
+    let hash: Option<String> = sqlx::query_scalar("SELECT password_hash FROM users WHERE id = $1")
+        .bind(uid)
+        .fetch_optional(&s.pool)
+        .await
+        .unwrap_or(None);
+    if !hash.is_some_and(|h| crate::auth::verify_password(&h, &input.current)) {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "wrong-password"}))).into_response();
+    }
+    let _ = sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2")
+        .bind(crate::auth::hash_password(&input.new))
+        .bind(uid)
+        .execute(&s.pool)
+        .await;
+    let keep = super::session_cookie(&headers).and_then(|c| c.parse::<uuid::Uuid>().ok());
+    let _ = sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND id IS DISTINCT FROM $2")
+        .bind(uid)
+        .bind(keep)
+        .execute(&s.pool)
+        .await;
+    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
+}
+
 /// Crée un token API/MCP personnel, affiché **une seule fois** (D18).
 /// Stocké hashé SHA-256, révocable. Sert aussi au MCP (`Authorization: Bearer`).
 pub async fn create_token(State(s): State<AppState>, headers: HeaderMap) -> impl IntoResponse {

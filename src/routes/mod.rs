@@ -46,6 +46,7 @@ fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
         .route("/api/me", get(me::me))
         .route("/api/login", post(me::login))
         .route("/api/logout", post(me::logout))
+        .route("/api/me/password", post(me::change_password))
         .route("/api/tokens", post(me::create_token))
         .route("/api/tokens/{id}", delete(me::revoke_token))
         .route("/api/users", post(me::create_user).get(me::list_users))

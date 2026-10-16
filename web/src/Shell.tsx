@@ -1,11 +1,12 @@
 /** Coquille : barre latérale repliable + barre du haut (ordinateur), en-tête + barre du bas (téléphone). */
 import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Avatar, Drawer, Menu, Modal, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
+import { Avatar, Button, Drawer, Menu, Modal, PasswordInput, Tooltip, useComputedColorScheme, useMantineColorScheme } from "@mantine/core";
 import {
-  IconChevronRight, IconDots, IconGridDots, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
+  IconChevronRight, IconDots, IconGridDots, IconKey, IconKeyboard, IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand,
   IconLogout, IconMoon, IconSearch, IconSun,
 } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { api, initials, useSettings, type Me } from "./api";
 import { CommandPalette, MOD, openSearch } from "./CommandPalette";
 import { LockerMark, NAV, navFor, type NavItem } from "./nav";
@@ -192,9 +193,42 @@ export function Shell({ me, view, setView, children }: {
   );
 }
 
+function PasswordForm({ onDone }: { onDone: () => void }) {
+  const [f, setF] = useState({ current: "", next: "", again: "" });
+  const [busy, setBusy] = useState(false);
+  const err = f.next && f.next.length < 10 ? "10 caractères minimum" : f.again && f.again !== f.next ? "Les deux mots de passe diffèrent" : "";
+  const ok = f.current && f.next.length >= 10 && f.next === f.again;
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await api("/api/me/password", { method: "POST", body: JSON.stringify({ current: f.current, new: f.next }) });
+      notifications.show({ message: "Mot de passe modifié", color: "ok" });
+      onDone();
+    } catch (e) {
+      const wrong = String(e).includes("wrong-password");
+      notifications.show({ message: wrong ? "Mot de passe actuel incorrect" : `Échec : ${String(e)}`, color: "crit" });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (ok) submit(); }} style={{ display: "grid", gap: 12 }}>
+      <PasswordInput label="Mot de passe actuel" autoComplete="current-password" value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} />
+      <PasswordInput label="Nouveau mot de passe" autoComplete="new-password" value={f.next} onChange={(e) => setF({ ...f, next: e.target.value })} />
+      <PasswordInput label="Confirmer le nouveau mot de passe" autoComplete="new-password" value={f.again} error={err || undefined} onChange={(e) => setF({ ...f, again: e.target.value })} />
+      <Button type="submit" disabled={!ok} loading={busy}>Changer le mot de passe</Button>
+    </form>
+  );
+}
+
 function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; compact?: boolean }) {
+  const [pwd, setPwd] = useState(false);
   const avatar = <Avatar size={compact ? 30 : 28} radius="xl" color={me.role === "pilot" ? "brand" : "gray"}>{initials(me.name)}</Avatar>;
   return (
+    <>
+    <Sheet opened={pwd} onClose={() => setPwd(false)} title="Changer mon mot de passe">
+      <PasswordForm onDone={() => setPwd(false)} />
+    </Sheet>
     <Menu position={compact ? "bottom-end" : "top-start"} width={220} radius="md" shadow="md">
       <Menu.Target>
         {compact ? (
@@ -216,9 +250,11 @@ function UserMenu({ me, onLogout, compact }: { me: Me; onLogout: () => void; com
           onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))}>
           Raccourcis clavier
         </Menu.Item>
+        <Menu.Item leftSection={<IconKey size={16} stroke={1.6} />} onClick={() => setPwd(true)}>Mot de passe</Menu.Item>
         <Menu.Item leftSection={<IconLogout size={16} stroke={1.6} />} onClick={onLogout}>Se déconnecter</Menu.Item>
       </Menu.Dropdown>
     </Menu>
+    </>
   );
 }
 
