@@ -49,3 +49,15 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | Notifications | Aucune en V1 (hors périmètre). | Après la bascule, si les rappels dans l'app ne suffisent pas. |
 | Connexion via Keycloak EPITA | Non en V1. | Si un client OIDC peut être obtenu pour l'app. |
 | Incident Cinder 13/10 | Tout ce qui monte un volume (bases managées, apps avec `/ready` sur DB) reste à `0/1` sur prod comme staging ; Endpoint/CronJob/apps sans DB passent. Ressources `iplanner*` supprimées des deux envs pour libérer les quotas, à recréer après réparation. | Retour SiOps (piste : OpenStack/Cinder HS, même famille que S3 503 du 09/10). |
+
+## Import Asana du 16/10/2026 (mapping retenu)
+
+Fichier produit depuis le projet « MVP Casier IoT · v2 (axes) » via le connecteur Asana (hors dépôt : `~/.config/lendrr-suivi/import-asana.json`).
+
+- **81 tâches** (dont 9 jalons) et **86 dépendances**. Asana en compte 82 : une tâche sans titre ni notes (HARD, 12–16/11) n'est pas importée. Le brief annonçait 78 dépendances ; les 86 viennent de l'historique des tâches (le connecteur n'expose pas le champ), lu des deux côtés de chaque lien, sans écart.
+- **Responsable et heures** : lus dans les notes (`Pilote : Erwen (2 h)`, `Appui : …`). Pour les tâches vidéo, la ligne `Répartition` donne des pourcentages de 4 h (Sophie 75 % = 3 h).
+- **Axe** : la section Asana (HARD, SOFT, IA, Pilotage, VIDÉO). Les 9 « Réserves · samedis » vont en PILOTAGE.
+- **Réserves** : sans pilote dans Asana, elles reçoivent Tom A. comme `lead` à 0 h (l'import exige exactement un lead).
+- **Statut** : `done` si cochée dans Asana, sinon `todo` (Asana n'a pas d'état « en cours »).
+- **Dates** : `start_on` / `due_on` ; sans début, la tâche tient sur sa date de fin. Un jalon a une date unique.
+- Les adresses e-mail de l'import sont celles de l'app (Tom A. : `tom.archambaud@epita.fr`, pas l'adresse Gmail d'Asana). Les comptes doivent exister avant l'import.
