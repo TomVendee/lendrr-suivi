@@ -274,10 +274,12 @@ pub type McpService = StreamableHttpService<SuiviMcp, LocalSessionManager>;
 
 /// Monte le serveur MCP en HTTP streamable **stateless** (D18) : aucune session
 /// en mémoire, donc compatible répliques multiples et redémarrages.
-pub fn streamable_service(pool: sqlx::PgPool) -> McpService {
+pub fn streamable_service(pool: sqlx::PgPool, app_host: Option<String>) -> McpService {
+    // rmcp n'accepte que localhost par défaut (anti DNS-rebinding) : on ajoute l'hôte public.
+    let hosts = ["localhost", "127.0.0.1", "::1"].map(String::from).into_iter().chain(app_host);
     StreamableHttpService::new(
         move || Ok(SuiviMcp { pool: pool.clone() }),
         Arc::new(LocalSessionManager::default()),
-        StreamableHttpServerConfig::default().with_legacy_session_mode(false),
+        StreamableHttpServerConfig::default().with_legacy_session_mode(false).with_allowed_hosts(hosts),
     )
 }

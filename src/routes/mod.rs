@@ -34,7 +34,7 @@ pub fn router(pool: PgPool, cfg: crate::config::Config) -> Router {
         setup_code: cfg.setup_code,
         secure_cookies: cfg.secure_cookies,
     };
-    let mcp_service = crate::mcp::streamable_service(pool);
+    let mcp_service = crate::mcp::streamable_service(pool, cfg.app_host);
     build(state, mcp_service)
 }
 
