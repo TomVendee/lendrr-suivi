@@ -27,6 +27,7 @@ WORKDIR /app
 COPY --from=builder /build/target/release/lendrr-suivi /app/lendrr-suivi
 COPY --from=builder /build/db /app/db
 COPY --from=webbuilder /web/dist /app/web/dist
-ENV PORT=8080
+ARG GIT_SHA=dev
+ENV PORT=8080 GIT_SHA=$GIT_SHA
 EXPOSE 8080
 CMD ["/app/lendrr-suivi"]

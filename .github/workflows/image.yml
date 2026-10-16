@@ -4,10 +4,22 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
+
+# Un seul déploiement à la fois ; un push qui arrive pendant un déploiement attend son tour.
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Valeurs publiques, pas des secrets. Le jeton Coolify, lui, est un secret du dépôt (COOLIFY_TOKEN).
+  COOLIFY_URL: https://coolify.myth2logics.dev
+  COOLIFY_APP_UUID: svlto3qjsywjphukvj8xxzbr
+  PUBLIC_URL: https://planning.ipv6-sigl.fr
 
 jobs:
   build:
@@ -22,15 +34,56 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag = sha court (ou tag git), repo en minuscules (ghcr.io l'exige)
+      - name: Tags (sha court ou tag git ; `main` mobile sur la branche principale) ; dépôt en minuscules (ghcr.io l'exige)
         id: tag
         run: |
-          echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT";
-          else echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; fi
+          repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          echo "repo=$repo" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then tag="${GITHUB_REF#refs/tags/}"; else tag="sha-${GITHUB_SHA::7}"; fi
+          {
+            echo "tags<<EOF"
+            echo "ghcr.io/$repo:$tag"
+            if [[ "$GITHUB_REF" == refs/heads/main ]]; then echo "ghcr.io/$repo:main"; fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          # Jamais `latest` (D10) : tag versionné ou SHA.
-          tags: ghcr.io/${{ steps.tag.outputs.repo }}:${{ steps.tag.outputs.tag }}
+          build-args: GIT_SHA=${{ github.sha }}
+          # Le tag sha est immuable (rollback). `main` suit la prod : Coolify le tire à chaque déploiement.
+          tags: ${{ steps.tag.outputs.tags }}
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déclenche le déploiement sur Coolify
+        id: trigger
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          if [ -z "$COOLIFY_TOKEN" ]; then
+            echo "::notice::COOLIFY_TOKEN absent : image publiée, déploiement à faire à la main."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            "$COOLIFY_URL/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=false"
+          echo
+          echo "run=true" >> "$GITHUB_OUTPUT"
+      - name: Attend que ce commit soit en ligne
+        if: steps.trigger.outputs.run == 'true'
+        run: |
+          for i in $(seq 1 60); do
+            live=$(curl -fsS "$PUBLIC_URL/api/hello" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("sha",""))' 2>/dev/null || true)
+            echo "essai $i : en ligne = ${live:-aucune réponse}, attendu = $GITHUB_SHA"
+            if [ "$live" = "$GITHUB_SHA" ]; then
+              curl -fsS "$PUBLIC_URL/ready" && echo && echo "Déployé et prêt."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Le commit $GITHUB_SHA n'est pas en ligne après 10 minutes."
+          exit 1

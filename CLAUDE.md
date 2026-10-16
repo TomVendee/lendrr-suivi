@@ -128,14 +128,19 @@ Chacune avec des cas tirés du vrai planning (cahier, maquettes) et des cas limi
 
 ## Déploiement sur Coolify
 
-Action manuelle de Tom A. dans l'interface Coolify (pas de script, pas de jeton dans le dépôt) :
+Application `planning` (projet IPV6-SIGL › production), base `planning-db` (PostgreSQL 16, base `app`). Image publique
+`ghcr.io/tomvendee/lendrr-suivi` publiée par la CI (`.github/workflows/image.yml`) : tag immuable `sha-xxxxxxx` à
+chaque push, plus le tag mobile `main` sur la branche principale. Port 8080, domaine `https://planning.ipv6-sigl.fr`,
+pas de healthcheck Coolify (l'image n'a ni `curl` ni `wget`). Variables : `DATABASE_URL`, `PORT=8080`,
+`APP_URL=https://planning.ipv6-sigl.fr` (+ `SETUP_CODE` le temps du premier compte, puis retiré).
+Ne jamais supprimer la base.
 
-- Base : PostgreSQL 16 `planning-db` (base `app`), URL interne donnée par Coolify.
-- Application : image publique `ghcr.io/<compte>/lendrr-suivi:sha-xxxxxxx` (jamais `latest`), publiée par la CI
-  (`.github/workflows/image.yml`). Port exposé 8080, domaine `https://planning.ipv6-sigl.fr`, healthcheck `/ready`.
-- Variables : `DATABASE_URL`, `PORT=8080`, `APP_URL=https://planning.ipv6-sigl.fr` et, le temps de créer le
-  premier compte, `SETUP_CODE` (à retirer ensuite, puis redéployer).
-- Mise à jour : changer le tag de l'image dans Coolify puis redéployer. Ne jamais supprimer la base.
+- **CD (D25)** : à chaque push sur `main`, la CI teste, publie l'image, appelle l'API de déploiement de Coolify
+  (secret GitHub `COOLIFY_TOKEN`, jeton limité au déploiement) puis attend que `GET /api/hello` renvoie le `sha` du
+  commit. Sans le secret, l'étape est ignorée et le déploiement reste manuel. Coolify doit suivre le tag `main`.
+- **Manuel / rollback** : dans Coolify, mettre le tag de l'image sur un `sha-xxxxxxx` précis et redéployer ; la CD
+  suivante le remettra sur `main` si on y retourne.
+- Aucun jeton dans le dépôt, les journaux ou le chat. Le jeton Coolify est créé par l'administrateur de l'instance.
 
 ## Import Asana (fonction 4)
 

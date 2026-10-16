@@ -99,7 +99,9 @@ async fn ready(
 }
 
 async fn hello() -> impl IntoResponse {
-    Json(json!({"name": "Suivi projet", "version": env!("CARGO_PKG_VERSION")}))
+    // `sha` : commit de l'image en service (build-arg GIT_SHA), lu par la CD pour confirmer le déploiement.
+    let sha = std::env::var("GIT_SHA").unwrap_or_else(|_| "dev".into());
+    Json(json!({"name": "Suivi projet", "version": env!("CARGO_PKG_VERSION"), "sha": sha}))
 }
 
 /// Barrière du MCP : aucune méthode (`initialize`, `tools/list`, `tools/call`) sans token valide non révoqué.
