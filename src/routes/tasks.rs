@@ -468,6 +468,43 @@ pub async fn update(
     (StatusCode::OK, Json(json!({"ok": true, "shifted": shifted, "milestones_threatened": threatened}))).into_response()
 }
 
+/// Règle unique du changement de statut (REST et MCP) : pilote du projet ou pilote de la tâche.
+/// Erreur = (code HTTP, raison).
+pub async fn change_status(
+    pool: &sqlx::PgPool,
+    uid: uuid::Uuid,
+    role: &str,
+    id: uuid::Uuid,
+    status: &str,
+) -> Result<(), (StatusCode, &'static str)> {
+    if !matches!(status, "todo" | "in_progress" | "blocked" | "done") {
+        return Err((StatusCode::BAD_REQUEST, "bad-status"));
+    }
+    if role != "pilot" {
+        let lead: Option<uuid::Uuid> = sqlx::query_scalar(
+            "SELECT user_id FROM assignments WHERE task_id=$1 AND role='lead'",
+        )
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
+        if lead != Some(uid) {
+            return Err((StatusCode::FORBIDDEN, "lead-or-pilot-only"));
+        }
+    }
+    let n = sqlx::query("UPDATE tasks SET status=$1 WHERE id=$2")
+        .bind(status)
+        .bind(id)
+        .execute(pool)
+        .await
+        .map(|r| r.rows_affected())
+        .unwrap_or(0);
+    if n == 0 {
+        return Err((StatusCode::NOT_FOUND, "not-found"));
+    }
+    Ok(())
+}
+
 /// Change le statut. Pilote projet ou pilote de la tâche uniquement.
 pub async fn set_status(
     State(s): State<AppState>,
@@ -478,31 +515,8 @@ pub async fn set_status(
     let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    if !matches!(input.status.as_str(), "todo" | "in_progress" | "blocked" | "done") {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-status"}))).into_response();
+    match change_status(&s.pool, uid, &role, id, &input.status).await {
+        Ok(()) => (StatusCode::OK, Json(json!({"ok": true}))).into_response(),
+        Err((code, reason)) => (code, Json(json!({"error": reason}))).into_response(),
     }
-    // Seul le pilote projet ou le pilote de la tâche change son statut.
-    if role != "pilot" {
-        let lead: Option<uuid::Uuid> = sqlx::query_scalar(
-            "SELECT user_id FROM assignments WHERE task_id=$1 AND role='lead'",
-        )
-        .bind(id)
-        .fetch_optional(&s.pool)
-        .await
-        .unwrap_or(None);
-        if lead != Some(uid) {
-            return (StatusCode::FORBIDDEN, Json(json!({"error": "lead-or-pilot-only"}))).into_response();
-        }
-    }
-    let n = sqlx::query("UPDATE tasks SET status=$1 WHERE id=$2")
-        .bind(&input.status)
-        .bind(id)
-        .execute(&s.pool)
-        .await
-        .map(|r| r.rows_affected())
-        .unwrap_or(0);
-    if n == 0 {
-        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
-    }
-    (StatusCode::OK, Json(json!({"ok": true}))).into_response()
 }

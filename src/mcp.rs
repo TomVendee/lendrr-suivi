@@ -43,6 +43,13 @@ pub struct LogHoursArgs {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct UpdateStatusArgs {
+    pub task_id: String,
+    /// `todo`, `in_progress`, `blocked` ou `done`. Pour un jalon, `done` = atteint.
+    pub status: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ValidateTaskArgs {
     pub revision_id: String,
     pub approve: bool,
@@ -210,6 +217,23 @@ impl SuiviMcp {
         .await
         .map_err(|_| ErrorData::invalid_params("bad-task", None))?;
         Ok(text(serde_json::json!({"ok": true})))
+    }
+
+    #[tool(description = "Changer le statut d'une tache ou d'un jalon : todo, in_progress, blocked, done (jalon atteint). Reserve au pilote du projet ou au responsable de la tache")]
+    async fn update_task_status(
+        &self,
+        Parameters(args): Parameters<UpdateStatusArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
+        let task_id: uuid::Uuid = args
+            .task_id
+            .parse()
+            .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
+        crate::routes::tasks::change_status(&self.pool, uid, &role, task_id, &args.status)
+            .await
+            .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
+        Ok(text(serde_json::json!({"ok": true, "task_id": task_id, "status": args.status})))
     }
 
     /// Lister les alertes (les siennes pour un membre, toutes pour le pilote).
