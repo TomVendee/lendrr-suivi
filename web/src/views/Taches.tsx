@@ -308,7 +308,7 @@ export function Taches({ role, taskId }: { role: string; taskId?: string }) {
                   <i aria-hidden="true" />{AXES[a].label}
                 </button>
               ))}
-              <SegmentedControl size="xs" value={status} onChange={setStatus} style={{ marginLeft: "auto" }} aria-label="Filtrer par statut"
+              <SegmentedControl size="xs" value={status} onChange={setStatus} style={{ marginLeft: "auto", maxWidth: "100%", overflowX: "auto" }} aria-label="Filtrer par statut"
                 data={[["", "Toutes"], ["todo", "À faire"], ["in_progress", "En cours"], ["blocked", "Bloquées"], ["done", "Terminées"]]
                   .map(([value, label]) => ({ value, label: `${label} ${value ? base.filter((t) => t.status === value).length : base.length}` }))} />
             </div>

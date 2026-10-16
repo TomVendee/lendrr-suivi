@@ -1,6 +1,6 @@
 /* Gantt : barres à la couleur de l'axe, chemin critique cerclé d'accent, liens critiques animés. */
 .gantt-scroll { overflow-x: auto; overscroll-behavior-x: contain; scroll-behavior: smooth; }
-.g-row { display: grid; grid-template-columns: 280px minmax(0, 1fr); box-sizing: border-box; border-top: 1px solid var(--border); }
+.g-row { display: grid; grid-template-columns: var(--label-w, 280px) minmax(0, 1fr); box-sizing: border-box; border-top: 1px solid var(--border); }
 .g-label {
   position: sticky; left: 0; z-index: 3;
   display: flex; align-items: center; gap: 8px; min-width: 0;

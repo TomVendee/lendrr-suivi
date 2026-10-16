@@ -133,8 +133,10 @@
 .content {
   box-sizing: border-box;
   width: 100%;
-  max-width: 1280px;
-  padding: 28px clamp(16px, 3vw, 40px) 64px;
+  max-width: 1760px; /* plein écran jusqu'à ~2000 px, centré au-delà */
+  margin-inline: auto;
+  container-type: inline-size; /* les écrans adaptent leurs colonnes à la place réellement disponible */
+  padding: 28px clamp(16px, 3vw, 48px) 64px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -204,3 +206,8 @@
 }
 .m-sheet-item[aria-current="page"] { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 .m-sheet-item .nav-count { position: absolute; top: 6px; right: 6px; margin: 0; }
+
+/* Graphes : 1 colonne sur téléphone, 2 sur tablette/portable, 4 sur grand écran (pas de carte orpheline). */
+.graph-cards { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 900px) { .graph-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1800px) { .graph-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

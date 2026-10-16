@@ -84,7 +84,7 @@ export function Graphes({ goCharge }: { goCharge: () => void }) {
         </div>
       </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 440px), 1fr))", gap: 16 }}>
+      <div className="graph-cards">
         <section aria-labelledby="g-cumul" style={sectionStyle}>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8 }}>
             <h2 id="g-cumul" style={h2}>Heures cumulées</h2>

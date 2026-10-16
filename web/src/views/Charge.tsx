@@ -87,7 +87,7 @@ export function Charge() {
           />
         }
       />
-      <section aria-label="Résumé" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+      <section aria-label="Résumé" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 12 }}>
         <div style={kpi}>
           <span style={{ fontSize: 13, color: muted }}>Capacité de l'équipe</span>
           <span style={{ fontFamily: F_MONO, fontSize: 26, fontWeight: 600 }}><CountUp value={teamCapa} format={fmtH} /> <span style={{ fontSize: 14, fontWeight: 400, color: muted }}>/ semaine</span></span>

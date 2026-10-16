@@ -46,7 +46,12 @@ function ThemeToggle() {
 /** Mémorise le repli de la barre latérale (préférence locale, sans incidence si le stockage est bloqué). */
 function useCollapsed(): [boolean, () => void] {
   const read = () => {
-    try { return localStorage.getItem("suivi-sidebar") === "collapsed"; } catch { return false; }
+    // Sans préférence enregistrée : repliée sur tablette et petit portable (< 1100 px), ouverte au-delà.
+    const narrow = window.innerWidth < 1100;
+    try {
+      const v = localStorage.getItem("suivi-sidebar");
+      return v === null ? narrow : v === "collapsed";
+    } catch { return narrow; }
   };
   const [c, setC] = useState(read);
   const toggle = () => setC((v) => {

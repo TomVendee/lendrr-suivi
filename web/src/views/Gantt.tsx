@@ -17,7 +17,9 @@ interface GanttData { today: string; tasks: GTask[]; deps: { from: string; to: s
 
 const AXIS_ORDER = ["HARD", "SOFT", "IA", "PILOTAGE", "VIDEO"] as const;
 const STATUS_FR: Record<string, string> = { todo: "À faire", in_progress: "En cours", blocked: "Bloquée", done: "Terminée" };
-const LABEL_W = 280, HEAD = 52, ROW_T = 32, ROW_AXE = 40;
+const HEAD = 52, ROW_T = 32, ROW_AXE = 40;
+/** Colonne des titres : étroite sur téléphone (la frise garde la place), 280 px sur ordinateur, plus large sur grand écran. */
+const labelFor = (vw: number) => vw < 760 ? Math.round(vw * 0.38) : Math.round(Math.min(440, Math.max(280, vw * 0.2)));
 type Zoom = "tout" | "mois" | "semaine";
 const PX_PER_DAY: Record<Zoom, number> = { tout: 0, mois: 16, semaine: 40 };
 const ZOOMS: Zoom[] = ["tout", "mois", "semaine"];
@@ -53,6 +55,13 @@ export function Gantt({ role }: { role: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const q = useQuery({ queryKey: ["gantt"], queryFn: () => api<GanttData>("/api/gantt") });
 
+  const [labelW, setLabelW] = useState(() => labelFor(window.innerWidth));
+  useEffect(() => {
+    const on = () => setLabelW(labelFor(window.innerWidth));
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+
   // Ctrl/⌘ + molette : zoom (écouteur non passif pour bloquer le zoom du navigateur).
   useEffect(() => {
     const el = scrollRef.current;
@@ -71,8 +80,8 @@ export function Gantt({ role }: { role: string }) {
     const el = scrollRef.current, plot = plotRef.current;
     if (!el || !plot || !q.data) return;
     const today = plot.querySelector<HTMLElement>(".g-today");
-    if (today) el.scrollLeft = Math.max(0, today.offsetLeft + LABEL_W - el.clientWidth / 2);
-  }, [zoom, q.data]);
+    if (today) el.scrollLeft = Math.max(0, today.offsetLeft + labelW - el.clientWidth / 2);
+  }, [zoom, q.data, labelW]);
 
   if (!q.data) return <PageSkeleton kind="frise" />;
   const { today, tasks, deps } = q.data;
@@ -94,7 +103,7 @@ export function Gantt({ role }: { role: string }) {
     return { code: `S${String(Math.floor((dayN(d) - s01) / 7) + 1).padStart(2, "0")}`, date: fmtDate(d) };
   });
   const colW = `${(7 / span) * 100}%`;
-  const plotMinWidth = zoom === "tout" ? 980 : LABEL_W + span * PX_PER_DAY[zoom];
+  const plotMinWidth = zoom === "tout" ? 980 : labelW + span * PX_PER_DAY[zoom];
 
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const isLate = (t: GTask) => t.status !== "done" && t.end < today;
@@ -158,7 +167,7 @@ export function Gantt({ role }: { role: string }) {
     e.preventDefault();
     const plot = plotRef.current;
     if (!plot) return;
-    const pxPerDay = (plot.getBoundingClientRect().width - LABEL_W) / span;
+    const pxPerDay = (plot.getBoundingClientRect().width - labelW) / span;
     const x0 = e.clientX;
     const move = (ev: PointerEvent) => setDrag({ id: t.id, dx: Math.round((ev.clientX - x0) / pxPerDay) });
     const up = (ev: PointerEvent) => {
@@ -320,7 +329,7 @@ export function Gantt({ role }: { role: string }) {
         </div>
       </div>
       <section aria-label="Diagramme de Gantt" style={{ ...card, padding: 0, overflow: "hidden" }}>
-        <div ref={scrollRef} className="gantt-scroll">
+        <div ref={scrollRef} className="gantt-scroll" style={{ "--label-w": `${labelW}px` } as React.CSSProperties}>
           <div ref={plotRef} style={{ position: "relative", minWidth: plotMinWidth }}>
             <div className="g-row" style={{ height: HEAD, borderTop: 0, borderBottom: "1px solid var(--border)" }}>
               <span className="g-label" style={{ fontSize: 12, color: muted, alignItems: "flex-end", paddingBottom: 8 }}>Tâche</span>
@@ -334,7 +343,7 @@ export function Gantt({ role }: { role: string }) {
               </div>
             </div>
             {rows}
-            <div aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: LABEL_W, right: 0, pointerEvents: "none", zIndex: 2 }}>
+            <div aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, left: labelW, right: 0, pointerEvents: "none", zIndex: 2 }}>
               {segs}
               <div className="g-today" style={{ left: `${((dayN(today) - dayN(min) + 0.5) / span) * 100}%` }} />
             </div>
