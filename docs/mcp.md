@@ -17,7 +17,7 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 - Servi par la même application que l'API et le front : un seul domaine.
 - Protection contre le DNS-rebinding de `rmcp` : les `Host` acceptés sont `localhost`, `127.0.0.1`, `::1`
   et l'hôte de `APP_URL`. Tout autre `Host` reçoit `403`.
-- État au 20/10/2026 : **en service**, 7 outils (tableau ci-dessous).
+- État au 20/10/2026 : **en service**, 8 outils (tableau ci-dessous).
 
 ## Authentification
 
@@ -42,12 +42,13 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 | `list_tasks` | `axis`, `status` (facultatifs) | tout token | tâches du planning, filtrables |
 | `log_hours` | `task_id`, `week`, `hours` (0 à 80) | assigné à la tâche, ou pilote | heures réelles d'une semaine (remplace la valeur) |
 | `update_task_status` | `task_id`, `status` : `todo`, `in_progress`, `blocked`, `done` | pilote du projet ou responsable (`lead`) de la tâche | change le statut ; pour un jalon, `done` = atteint |
-| `add_task_comment` | `task_id`, `body` (non vide, 2000 caractères max) | tout token | poste dans le fil de discussion de la tâche |
+| `add_task_comment` | `task_id`, `body` (non vide, 2000 caractères max) | tout token | poste dans le fil de discussion de la tâche ; le texte enregistré est précédé de `[IA] ` |
+| `list_task_comments` | `task_id` | tout token | fil de discussion de la tâche, du plus ancien au plus récent : `author`, `body`, `at` ; à lire avant de commenter pour éviter les doublons |
 | `list_alerts` | aucun | tout token | alertes (les siennes pour un membre, toutes pour le pilote) |
 | `validate_task` | `revision_id`, `approve` | pilote, validateur ou suppléant (réglages) | valide ou rejette une révision en attente |
 
 - Les erreurs reviennent en erreur JSON-RPC `-32602` avec la raison : `bad-status`, `bad-task-id`,
-  `bad-task`, `not-found`, `lead-or-pilot-only`, `not-assigned`, `bad-hours`, `bad-comment`,
+  `bad-task` (tâche inconnue), `not-found`, `lead-or-pilot-only`, `not-assigned`, `bad-hours`, `bad-comment`,
   `not-a-validator`, `bad-or-revoked-token`.
 - **Signature des commentaires** : un commentaire posté par le MCP est signé du nom du propriétaire du
   token, sans marque qui indique qu'il vient d'une IA.
@@ -57,7 +58,7 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 
 `get_task`, `create_task` / `update_task` (pilote : publié direct ; membre : révision en attente),
 `manage_dependencies` (pilote), `manage_assignments` (pilote), `list_load`, `gantt_data`, `meteo_data`,
-`get_baseline` / `get_export` (pilote), lecture du fil de discussion d'une tâche. La REST les offre déjà
+`get_baseline` / `get_export` (pilote). La REST les offre déjà
 pour la plupart ; ils arrivent dans le MCP avec leurs fonctions.
 
 ## Exemples

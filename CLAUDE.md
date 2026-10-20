@@ -14,7 +14,7 @@ Le développeur est Tom A. (chef de projet de l'équipe). Il écrit en français
 ## À lire avant tout travail
 
 1. `docs/cahier-des-besoins.md` : le besoin, les 11 fonctions dans l'ordre, les règles de calcul et d'alerte.
-2. `docs/decisions.md` : la stack et les choix tranchés (D1 à D25), les risques acceptés, les points ouverts.
+2. `docs/decisions.md` : la stack et les choix tranchés (D1 à D26), les risques acceptés, les points ouverts.
 3. `docs/maquettes/README.md` puis le `.dc.html` de l'écran concerné : structure, contenu et comportement
    attendus. Le visuel suit la DA « Précision » (D23), pas les maquettes.
 4. `docs/cassiopee-guide-ia.md` : **obsolète** (Cassiopée abandonnée, voir `decisions.md` D1).

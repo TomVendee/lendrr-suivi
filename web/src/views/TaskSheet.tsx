@@ -295,11 +295,11 @@ export function TaskDetailSheet({ id, onClose, role, nameOf }: {
 
           <section aria-label="Description">
             {t.description
-              ? <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, whiteSpace: "pre-line" }}>{t.description}</p>
+              ? <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.65, whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{t.description}</p>
               : <p style={{ margin: 0, fontSize: 14, color: muted }}>Pas de description.{canEdit ? " Ajoute le contexte avec « Modifier »." : ""}</p>}
             {t.done_criteria && (
               <p style={{ margin: "10px 0 0", fontSize: 14, padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--sunken)" }}>
-                <strong style={{ fontWeight: 600 }}>Terminé quand : </strong>{t.done_criteria}
+                <strong style={{ fontWeight: 600 }}>Terminé quand : </strong><span style={{ overflowWrap: "anywhere" }}>{t.done_criteria}</span>
               </p>
             )}
           </section>
@@ -343,7 +343,7 @@ export function TaskDetailSheet({ id, onClose, role, nameOf }: {
               <div key={i} style={{ padding: "8px 0", borderTop: `1px solid ${line}` }}>
                 <span style={{ fontWeight: 600, fontSize: 13 }}>{c.author}</span>
                 <span style={{ fontSize: 12, color: muted }}>, {new Date(c.at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
-                <p style={{ margin: "2px 0 0", fontSize: 14, whiteSpace: "pre-line" }}>{c.body}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 14, whiteSpace: "pre-line", overflowWrap: "anywhere" }}>{c.body}</p>
               </div>
             ))}
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>

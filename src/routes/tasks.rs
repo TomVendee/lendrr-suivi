@@ -95,6 +95,19 @@ pub struct CommentIn {
     pub body: String,
 }
 
+/// Fil de discussion d'une tâche, du plus ancien au plus récent (REST et MCP).
+pub async fn comment_list(pool: &sqlx::PgPool, task_id: uuid::Uuid) -> Vec<serde_json::Value> {
+    let rows: Vec<(String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        "SELECT u.name, c.body, c.created_at FROM task_comments c JOIN users u ON u.id = c.user_id
+         WHERE c.task_id = $1 ORDER BY c.created_at",
+    )
+    .bind(task_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+    rows.iter().map(|(who, body, at)| json!({"author": who, "body": body, "at": at})).collect()
+}
+
 /// Fil de discussion d'une tâche (cahier : les membres commentent).
 /// Lecture et écriture : connecté. 2000 caractères max.
 pub async fn comments(
@@ -105,36 +118,28 @@ pub async fn comments(
     if current_user(&s.pool, &headers).await.is_err() {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     }
-    let rows: Vec<(String, String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
-        "SELECT u.name, c.body, c.created_at FROM task_comments c JOIN users u ON u.id = c.user_id
-         WHERE c.task_id = $1 ORDER BY c.created_at",
-    )
-    .bind(id)
-    .fetch_all(&s.pool)
-    .await
-    .unwrap_or_default();
-    let out: Vec<_> = rows
-        .iter()
-        .map(|(who, body, at)| json!({"author": who, "body": body, "at": at}))
-        .collect();
+    let out = comment_list(&s.pool, id).await;
     (StatusCode::OK, Json(out)).into_response()
 }
 
 /// Règle unique d'un commentaire (REST et MCP) : texte non vide, 2000 caractères max, tâche existante.
+/// `from_ai` (MCP) : le texte enregistré est précédé de `[IA] ` ; la limite porte sur le texte saisi.
 pub async fn post_comment(
     pool: &sqlx::PgPool,
     uid: uuid::Uuid,
     task_id: uuid::Uuid,
     body: &str,
+    from_ai: bool,
 ) -> Result<(), (StatusCode, &'static str)> {
     let body = body.trim();
     if body.is_empty() || body.len() > 2000 {
         return Err((StatusCode::BAD_REQUEST, "bad-comment"));
     }
+    let stored = if from_ai { crate::domain::validation::ai_comment(body) } else { body.to_string() };
     sqlx::query("INSERT INTO task_comments (task_id, user_id, body) VALUES ($1,$2,$3)")
         .bind(task_id)
         .bind(uid)
-        .bind(body)
+        .bind(stored)
         .execute(pool)
         .await
         .map(|_| ())
@@ -150,7 +155,7 @@ pub async fn add_comment(
     let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    match post_comment(&s.pool, uid, id, &input.body).await {
+    match post_comment(&s.pool, uid, id, &input.body, false).await {
         Ok(()) => (StatusCode::CREATED, Json(json!({"ok": true}))).into_response(),
         Err((code, reason)) => (code, Json(json!({"error": reason}))).into_response(),
     }

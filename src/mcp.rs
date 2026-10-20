@@ -52,8 +52,13 @@ pub struct UpdateStatusArgs {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct AddCommentArgs {
     pub task_id: String,
-    /// Texte du commentaire, 2000 caractères maximum. Signé du nom du propriétaire du token.
+    /// Texte du commentaire, 2000 caractères maximum. Signé du nom du propriétaire du token et précédé de « [IA] ».
     pub body: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct ListCommentsArgs {
+    pub task_id: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -243,7 +248,7 @@ impl SuiviMcp {
         Ok(text(serde_json::json!({"ok": true, "task_id": task_id, "status": args.status})))
     }
 
-    #[tool(description = "Poster un commentaire sur une tache (fil de discussion). Le commentaire est signe du nom du proprietaire du token, 2000 caracteres max")]
+    #[tool(description = "Poster un commentaire sur une tache (fil de discussion). Signe du nom du proprietaire du token et precede de [IA], 2000 caracteres max")]
     async fn add_task_comment(
         &self,
         Parameters(args): Parameters<AddCommentArgs>,
@@ -254,10 +259,32 @@ impl SuiviMcp {
             .task_id
             .parse()
             .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
-        crate::routes::tasks::post_comment(&self.pool, uid, task_id, &args.body)
+        crate::routes::tasks::post_comment(&self.pool, uid, task_id, &args.body, true)
             .await
             .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
         Ok(text(serde_json::json!({"ok": true, "task_id": task_id})))
+    }
+
+    #[tool(description = "Lire le fil de discussion d'une tache, du plus ancien au plus recent (auteur, texte, date). A consulter avant de commenter pour eviter les doublons")]
+    async fn list_task_comments(
+        &self,
+        Parameters(args): Parameters<ListCommentsArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        user_from_parts(&self.pool, &parts).await?;
+        let task_id: uuid::Uuid = args
+            .task_id
+            .parse()
+            .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
+        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1)")
+            .bind(task_id)
+            .fetch_one(&self.pool)
+            .await
+            .unwrap_or(false);
+        if !exists {
+            return Err(ErrorData::invalid_params("bad-task", None));
+        }
+        Ok(text(serde_json::Value::Array(crate::routes::tasks::comment_list(&self.pool, task_id).await)))
     }
 
     /// Lister les alertes (les siennes pour un membre, toutes pour le pilote).

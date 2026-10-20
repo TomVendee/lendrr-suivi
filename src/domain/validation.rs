@@ -9,6 +9,19 @@ pub fn can_validate(lead_count: usize) -> bool {
     lead_count == 1
 }
 
+/// Marque posée devant les commentaires postés par une IA (outil MCP), pour les distinguer de ceux de la personne.
+pub const AI_PREFIX: &str = "[IA] ";
+
+/// Texte à enregistrer pour un commentaire d'IA : marque ajoutée, sauf si le texte la porte déjà.
+pub fn ai_comment(body: &str) -> String {
+    let body = body.trim();
+    if body.to_lowercase().starts_with("[ia]") {
+        body.to_string()
+    } else {
+        format!("{AI_PREFIX}{body}")
+    }
+}
+
 pub fn valid_axis(code: &str) -> bool {
     matches!(code, "HARD" | "SOFT" | "IA" | "PILOTAGE" | "VIDEO")
 }
@@ -55,6 +68,14 @@ pub fn pending_overdue(created: NaiveDate, today: NaiveDate, reminder_days: Opti
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ai_comment_gets_prefix_once() {
+        assert_eq!(ai_comment("  Bonjour  "), "[IA] Bonjour");
+        assert_eq!(ai_comment("[IA] déjà marqué"), "[IA] déjà marqué");
+        assert_eq!(ai_comment("[ia] minuscules"), "[ia] minuscules");
+        assert_eq!(ai_comment("[IAB] autre chose"), "[IA] [IAB] autre chose");
+    }
 
     #[test]
     fn lead_rule() {

@@ -32,6 +32,7 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | D23 | Direction artistique « Précision » | **Nouvelle DA, qui remplace la partie visuelle de D17 et des maquettes** : esprit Linear, thème sombre et clair (le système choisit par défaut), Geist / Geist Mono, accent indigo unique, densité élevée. Jetons uniques dans `web/src/styles/tokens.css` (oklch, `light-dark()`), aucune couleur en dur dans les écrans. Couleurs des axes : palette catégorielle validée (outil dataviz, clair et sombre). Les maquettes restent la référence de **structure et de contenu**, plus du visuel. Routage par URL (`web/src/router.ts`, API History + View Transitions). | Demande de Tom A. (15/10/2026) : une app moderne, qui marque le jury et soit agréable au quotidien. |
 | D24 | Automatismes | Tâche de fond horaire dans le serveur (`routes::report::housekeeping`) : photo de la semaine (baseline + sauvegarde JSON) **dès qu’elle manque et que le planning n’est pas vide**, donc le lundi à 0 h, ou au redémarrage si le serveur était arrêté ; le bouton du pilote la reprend à la demande. Purge D20 sur la **date de proposition** (pas de date de décision en base), jamais les propositions en attente. | Pas de CronJob ni d'accès au cluster nécessaires ; un seul réplica sur Coolify, donc pas de double exécution. |
 | D25 | Déploiement continu (écrite, **inactive** : déploiement manuel tant que l'API Coolify n'est pas activée) | **CD GitHub Actions → Coolify** : après les tests et la publication de l'image, appel de `GET /api/v1/deploy` (jeton limité au déploiement, secret `COOLIFY_TOKEN`), puis attente que `/api/hello` renvoie le `sha` du commit. Coolify suit le tag mobile `main` ; le tag `sha-xxxxxxx` reste immuable pour le rollback. | Un jeton de déploiement ne peut pas changer la configuration (donc pas le tag) : d'où le tag mobile, qui déroge à D10 (« jamais `latest` ») pour la seule prod. Le `sha` renvoyé par `/api/hello` prouve que le bon commit tourne. |
+| D26 | Commentaires écrits par une IA | Le MCP peut **poster** (`add_task_comment`) et **lire** (`list_task_comments`) le fil d'une tâche. Un commentaire posté par le MCP est enregistré avec le préfixe **`[IA] `**, sous le nom du propriétaire du token. | La personne voit tout de suite ce qui vient d'une IA ; lire le fil avant de poster évite les doublons. La marque est dans le texte (pas de colonne en plus) : simple, et visible partout où le commentaire s'affiche. |
 
 ## Risques acceptés
 
@@ -53,8 +54,6 @@ valeur par défaut à appliquer tant que rien d'autre n'est décidé.
 | Notifications | Aucune en V1 (hors périmètre). | Après la bascule, si les rappels dans l'app ne suffisent pas. |
 | Connexion via Keycloak EPITA | Non en V1. | Si un client OIDC peut être obtenu pour l'app. |
 | Déploiement continu (D25) | Manuel. | L'activation de l'API de Coolify par l'administrateur de l'instance et la création du secret `COOLIFY_TOKEN`. |
-| Marque « IA » sur les commentaires du MCP | Aucune : le commentaire est signé du nom du propriétaire du token. | Si l'équipe veut distinguer ce qu'écrivent les IA. |
-| Lecture du fil de discussion par le MCP | Non exposée (le MCP peut poster, pas lire). | Si les IA produisent des doublons. |
 
 ## Import Asana du 16/10/2026 (mapping retenu)
 
