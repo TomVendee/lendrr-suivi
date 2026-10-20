@@ -3,59 +3,84 @@
 ## Principe
 
 Les IA (Claude, Cowork, IDE) pilotent l'app comme Linear : elles lisent le planning
-et remplissent de la donnée via le protocole **MCP**, avec **plein accès fonctionnel**
-mais **le même contrôle de rôle que la REST** : un token de membre ne peut pas valider,
-un token pilote peut tout.
+et remplissent de la donnée via le protocole **MCP**, avec **le même contrôle de rôle que la REST** :
+un token de membre ne peut pas valider, un token pilote peut tout. Chaque outil appelle les mêmes
+règles que l'écran correspondant.
 
 Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* données aux IA
 *externes*, il n'appelle aucune IA.
 
 ## Transport
 
-- `POST /mcp`, protocole **Streamable HTTP** (`rmcp`, `legacy_session_mode = false`,
-  mode **stateless** : pas de `LocalSessionManager`, compatible répliques ≤ 3 et restarts).
-- Monté sur la même Application/Endpoint Cassiopée (un seul endpoint, `path` transmis tel quel).
-- État au 14/10/2026 : **en service** (`initialize`, `tools/list`, `tools/call`), 3 outils :
-  `my_week`, `list_tasks`, `log_hours`. Les autres outils du tableau arrivent avec leurs
-  fonctions (F6→F11).
+- `POST https://planning.ipv6-sigl.fr/mcp` (et `/mcp/`), protocole **Streamable HTTP** (`rmcp`,
+  `legacy_session_mode = false`, mode **stateless** : aucune session en mémoire, compatible redémarrages).
+- Servi par la même application que l'API et le front : un seul domaine.
+- Protection contre le DNS-rebinding de `rmcp` : les `Host` acceptés sont `localhost`, `127.0.0.1`, `::1`
+  et l'hôte de `APP_URL`. Tout autre `Host` reçoit `403`.
+- État au 20/10/2026 : **en service**, 7 outils (tableau ci-dessous).
 
 ## Authentification
 
-- `Authorization: Bearer ls_< base64url(32 octets) >`, token personnel créé par
-  l'utilisateur via `POST /api/tokens` (réponse : le token en clair **une seule fois**).
-  Réglages › Accès IA affichera la même chose quand l'écran existera.
+- **Toutes** les méthodes (`initialize`, `tools/list`, `tools/call`) exigent
+  `Authorization: Bearer ls_<base64url, 32 octets>`. Sans token valide et non révoqué : `401` avec
+  `WWW-Authenticate: Bearer`. Le cookie de session web n'est **pas** accepté sur `/mcp`.
+- Un token est **personnel** : il agit au nom de son propriétaire, avec son rôle (`member` ou `pilot`).
+- **Gestion dans l'interface** : menu du compte › **Accès IA**. Chacun crée (avec un nom, par exemple
+  « Claude Code »), liste et révoque ses propres tokens. La valeur n'est affichée qu'**une seule fois**,
+  à la création.
+- **Gestion par l'API** (session web ou token) : `POST /api/tokens` (corps facultatif `{"label": "…"}`,
+  60 caractères max ; réponse `{id, token}`), `GET /api/tokens` (tokens actifs : `id`, `label`,
+  `created_at`, jamais la valeur), `DELETE /api/tokens/{id}` (révocation immédiate).
 - Stocké **hashé SHA-256** en base (`api_tokens`), révocable (`revoked`), scopes `full`
   (V1 : le rôle fait foi, pas de scopes fins).
-- Le handler lit le header via `Extension<Parts>` et résout `(user_id, role)` comme la REST
-  (cookie `sid` pour le web, Bearer pour machines/MCP).
 
-## Outils (miroir de la REST, mêmes services, mêmes règles)
+## Outils exposés
 
-| Outil | Rôle min | Effet |
-|---|---|---|
-| `my_week` | member | tâches de ma semaine + charge prévue/réelle/capacité + mes alertes |
-| `list_tasks` / `get_task` | member | liste filtrable (axe, statut), fiche complète |
-| `create_task` / `update_task` | member* | pilote : publié direct ; membre : révision `pending` (202), validée en F11 |
-| `update_task_status` | member | `todo/in_progress/blocked/done` |
-| `manage_dependencies` | pilot | lier/délier (refus de cycle), décale en cascade |
-| `manage_assignments` | pilot | lead/appuis + heures (exactement 1 lead) |
-| `log_hours` | member | heures réelles d'une semaine |
-| `list_load` | member | plan de charge personne × semaine |
-| `list_alerts` | member (siennes) / pilot (toutes) | les 7 alertes |
-| `gantt_data` | member | tâches + dépendances + chemin critique + jalons |
-| `meteo_data` | member | avancement/retards/prochain jalon par axe |
-| `validate_task` | pilot | valide/rejette une révision (F11) |
-| `get_baseline` / `get_export` | pilot | photo du lundi, export prévu/réalisé |
+| Outil | Arguments | Qui | Effet |
+|---|---|---|---|
+| `my_week` | `week` (facultatif, défaut : semaine courante) | tout token | tâches de la semaine, charge prévue/réelle/capacité |
+| `list_tasks` | `axis`, `status` (facultatifs) | tout token | tâches du planning, filtrables |
+| `log_hours` | `task_id`, `week`, `hours` (0 à 80) | assigné à la tâche, ou pilote | heures réelles d'une semaine (remplace la valeur) |
+| `update_task_status` | `task_id`, `status` : `todo`, `in_progress`, `blocked`, `done` | pilote du projet ou responsable (`lead`) de la tâche | change le statut ; pour un jalon, `done` = atteint |
+| `add_task_comment` | `task_id`, `body` (non vide, 2000 caractères max) | tout token | poste dans le fil de discussion de la tâche |
+| `list_alerts` | aucun | tout token | alertes (les siennes pour un membre, toutes pour le pilote) |
+| `validate_task` | `revision_id`, `approve` | pilote, validateur ou suppléant (réglages) | valide ou rejette une révision en attente |
 
-\* `create_task` par un membre ne publie jamais directement (validation active par défaut).
+- Les erreurs reviennent en erreur JSON-RPC `-32602` avec la raison : `bad-status`, `bad-task-id`,
+  `bad-task`, `not-found`, `lead-or-pilot-only`, `not-assigned`, `bad-hours`, `bad-comment`,
+  `not-a-validator`, `bad-or-revoked-token`.
+- **Signature des commentaires** : un commentaire posté par le MCP est signé du nom du propriétaire du
+  token, sans marque qui indique qu'il vient d'une IA.
+- Les identifiants de tâche (`task_id`) sont ceux renvoyés par `list_tasks` ou par l'API (`/api/tasks`).
+
+### Prévus, pas encore exposés
+
+`get_task`, `create_task` / `update_task` (pilote : publié direct ; membre : révision en attente),
+`manage_dependencies` (pilote), `manage_assignments` (pilote), `list_load`, `gantt_data`, `meteo_data`,
+`get_baseline` / `get_export` (pilote), lecture du fil de discussion d'une tâche. La REST les offre déjà
+pour la plupart ; ils arrivent dans le MCP avec leurs fonctions.
 
 ## Exemples
 
 ```bash
-# Santé MCP (501 tant que non implémenté)
-curl -s -X POST https://lendrr-suivi.cassiopee.siops.sigl.epita.fr/mcp \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{}'
+# Liste des outils (token obligatoire)
+curl -s -X POST https://planning.ipv6-sigl.fr/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+
+# Poster un commentaire
+curl -s -X POST https://planning.ipv6-sigl.fr/mcp \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"add_task_comment","arguments":{"task_id":"<uuid>","body":"Texte du commentaire"}}}'
 ```
 
-Configuration client (Claude/Cowork) : serveur MCP `streamable-http`,
-URL `https://lendrr-suivi.cassiopee.siops.sigl.epita.fr/mcp`, header `Authorization`.
+Les réponses arrivent au format SSE (`data: {…}`) : retirer le préfixe `data: ` avant de lire le JSON.
+
+Configuration client :
+
+- **Claude Code** : `claude mcp add --transport http --scope user lendrr https://planning.ipv6-sigl.fr/mcp --header "Authorization: Bearer <token>"`
+  (le token est alors écrit dans `~/.claude.json`, hors dépôt).
+- **Autre client** : serveur MCP `streamable-http`, URL `https://planning.ipv6-sigl.fr/mcp`, en-tête `Authorization`.
+  Un client qui ne sait pas envoyer d'en-tête personnalisé (certains connecteurs web) ne peut pas se connecter.

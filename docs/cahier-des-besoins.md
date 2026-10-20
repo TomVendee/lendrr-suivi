@@ -143,7 +143,7 @@ Ces fonctions attendront que la V1 serve vraiment au point du lundi.
 
 ## Décisions
 
-Voir `docs/decisions.md` : les choix tranchés le 13/10/2026 (hébergement sur Cassiopée, stack, connexion…) et
+Voir `docs/decisions.md` : les choix tranchés le 13/10/2026 (stack, connexion… ; l'hébergement, prévu sur Cassiopée, est passé à Coolify le 16/10/2026, D1) et
 ceux qui restent ouverts.
 
 ## Prochaines étapes
