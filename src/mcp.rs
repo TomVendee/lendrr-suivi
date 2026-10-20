@@ -50,6 +50,13 @@ pub struct UpdateStatusArgs {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct AddCommentArgs {
+    pub task_id: String,
+    /// Texte du commentaire, 2000 caractères maximum. Signé du nom du propriétaire du token.
+    pub body: String,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct ValidateTaskArgs {
     pub revision_id: String,
     pub approve: bool,
@@ -234,6 +241,23 @@ impl SuiviMcp {
             .await
             .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
         Ok(text(serde_json::json!({"ok": true, "task_id": task_id, "status": args.status})))
+    }
+
+    #[tool(description = "Poster un commentaire sur une tache (fil de discussion). Le commentaire est signe du nom du proprietaire du token, 2000 caracteres max")]
+    async fn add_task_comment(
+        &self,
+        Parameters(args): Parameters<AddCommentArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let (uid, _) = user_from_parts(&self.pool, &parts).await?;
+        let task_id: uuid::Uuid = args
+            .task_id
+            .parse()
+            .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
+        crate::routes::tasks::post_comment(&self.pool, uid, task_id, &args.body)
+            .await
+            .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
+        Ok(text(serde_json::json!({"ok": true, "task_id": task_id})))
     }
 
     /// Lister les alertes (les siennes pour un membre, toutes pour le pilote).

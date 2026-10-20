@@ -120,6 +120,27 @@ pub async fn comments(
     (StatusCode::OK, Json(out)).into_response()
 }
 
+/// Règle unique d'un commentaire (REST et MCP) : texte non vide, 2000 caractères max, tâche existante.
+pub async fn post_comment(
+    pool: &sqlx::PgPool,
+    uid: uuid::Uuid,
+    task_id: uuid::Uuid,
+    body: &str,
+) -> Result<(), (StatusCode, &'static str)> {
+    let body = body.trim();
+    if body.is_empty() || body.len() > 2000 {
+        return Err((StatusCode::BAD_REQUEST, "bad-comment"));
+    }
+    sqlx::query("INSERT INTO task_comments (task_id, user_id, body) VALUES ($1,$2,$3)")
+        .bind(task_id)
+        .bind(uid)
+        .bind(body)
+        .execute(pool)
+        .await
+        .map(|_| ())
+        .map_err(|_| (StatusCode::NOT_FOUND, "bad-task"))
+}
+
 pub async fn add_comment(
     State(s): State<AppState>,
     headers: HeaderMap,
@@ -129,21 +150,10 @@ pub async fn add_comment(
     let Ok((uid, _)) = current_user(&s.pool, &headers).await else {
         return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
     };
-    let body = input.body.trim().to_string();
-    if body.is_empty() || body.len() > 2000 {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-comment"}))).into_response();
+    match post_comment(&s.pool, uid, id, &input.body).await {
+        Ok(()) => (StatusCode::CREATED, Json(json!({"ok": true}))).into_response(),
+        Err((code, reason)) => (code, Json(json!({"error": reason}))).into_response(),
     }
-    let ok = sqlx::query("INSERT INTO task_comments (task_id, user_id, body) VALUES ($1,$2,$3)")
-        .bind(id)
-        .bind(uid)
-        .bind(body)
-        .execute(&s.pool)
-        .await
-        .is_ok();
-    if !ok {
-        return (StatusCode::NOT_FOUND, Json(json!({"error": "bad-task"}))).into_response();
-    }
-    (StatusCode::CREATED, Json(json!({"ok": true}))).into_response()
 }
 
 
