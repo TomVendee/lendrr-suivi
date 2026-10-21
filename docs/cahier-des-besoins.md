@@ -69,10 +69,10 @@ prévu contre réalisé.
 | 2 | Dépendances et décalage automatique | Relier les tâches ; quand une tâche recule, celles qui en dépendent reculent d'elles-mêmes |
 | 3 | Ma semaine | Chacun voit ses tâches de la semaine et met à jour leur statut |
 | 4 | Import depuis Asana | Les 81 tâches, leurs dates, dépendances, statuts et répartitions repris en une fois |
-| 5 | Saisie des heures | « 1,5 h sur cette tâche », en moins d'une minute par semaine |
+| 5 | Saisie des heures | « 1,5 h sur cette tâche », en moins d'une minute par semaine, depuis « Ma semaine » ou directement depuis la fiche de la tâche (section « Mes heures » : semaine au choix, boutons +0,5 / +1 / +2 h) |
 | 6 | Plan de charge | Pour chaque personne et chaque semaine : prévu, réel et capacité, côte à côte |
 | 7 | Alertes | Surcharges, retards, heures non déclarées, jalons menacés, au moment où ils apparaissent |
-| 8 | Gantt et chemin critique | La frise des tâches et leurs dépendances ; on déplace une barre pour changer ses dates ; la chaîne qui fixe la date de soutenance est mise en évidence |
+| 8 | Gantt et chemin critique | La frise des tâches et leurs dépendances ; on déplace une barre pour changer ses dates, et un clic sur une barre, un titre ou un jalon ouvre la fiche de la tâche par-dessus la frise ; la chaîne qui fixe la date de soutenance est mise en évidence |
 | 9 | Météo par axe | Pour HARD, SOFT, IA, Vidéo et Pilotage : avancement, retards, prochain jalon et son risque |
 | 10 | Synthèse et export | Le résumé de la semaine pour le point du lundi, et le prévu contre réalisé pour la soutenance |
 | 11 | Validation des tâches | Le chef de projet relit et valide chaque tâche proposée ou modifiée avant qu'elle apparaisse chez ses collaborateurs ; option activable dans les réglages, prévue dans les données dès la fonction 1 |
@@ -125,7 +125,7 @@ semaine » s'ouvre par défaut pour les membres, la « Météo » pour le pilote
 | Tâches | Tous ; propositions par les membres, validation par le pilote | La liste par axe, filtrable par personne et par statut ; la fiche d'une tâche avec ses dates, sa répartition, ses dépendances, ses commentaires et ses heures ; pour le pilote, la file des tâches à valider |
 | Météo | Tous, par défaut pour le pilote | Une carte par axe : avancement, tâches en retard, prochain jalon et son risque, alertes en cours |
 | Plan de charge | Tous | Un tableau personne × semaine, prévu et réel dans chaque case, coloré selon l'écart à la capacité ; une vue Graphes associée |
-| Gantt | Tous ; déplacement des barres par le pilote | La frise des tâches groupées par axe ou en vue globale, les dépendances, le chemin critique en surbrillance, les jalons, la ligne d'aujourd'hui |
+| Gantt | Tous ; déplacement des barres par le pilote ; clic sur une tâche ou un jalon : sa fiche (adresse `/gantt/<id>`) | La frise des tâches groupées par axe ou en vue globale, les dépendances, le chemin critique en surbrillance, les jalons, la ligne d'aujourd'hui |
 | Alertes | Pilote | Toutes les alertes ouvertes, triées par gravité, chacune ouvrant la fiche de la tâche |
 | Synthèse et export | Pilote | La synthèse de la semaine à relire, et l'export prévu contre réalisé pour la soutenance |
 | Réglages | Pilote | Membres, capacités et absences, seuils d'alerte, validation des tâches, collaborateurs par tâche, import depuis Asana, sauvegardes |

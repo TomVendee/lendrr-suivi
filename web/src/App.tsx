@@ -41,7 +41,7 @@ export function App() {
       {v === "taches" && <Taches role={me.data.role} taskId={route.id} />}
       {v === "charge" && <Charge />}
       {v === "graphes" && <Graphes goCharge={() => go("charge")} />}
-      {v === "gantt" && <Gantt role={me.data.role} />}
+      {v === "gantt" && <Gantt role={me.data.role} taskId={route.id} />}
       {v === "alertes" && <Alertes goTaches={(id) => navigate(id ? `/taches/${id}` : "/taches")} />}
       {v === "synthese" && <Synthese role={me.data.role} />}
       {v === "reglages" && (me.data.role === "pilot" ? <Reglages /> : <p>Réservé au pilote.</p>)}

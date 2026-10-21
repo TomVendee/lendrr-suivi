@@ -5,7 +5,9 @@ import { Checkbox, SegmentedControl, Tooltip } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconChevronRight } from "@tabler/icons-react";
 import { PageSkeleton } from "../skeletons";
-import { api, fmtDate } from "../api";
+import { api, fmtDate, useUsers } from "../api";
+import { navigate } from "../router";
+import { TaskDetailSheet } from "./TaskSheet";
 import { AXES, PageHead, card, muted } from "../theme";
 import "../styles/gantt.css";
 
@@ -42,8 +44,12 @@ const addWorkdays = (s: string, k: number) => {
   return iso(d);
 };
 
-export function Gantt({ role }: { role: string }) {
+export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
   const qc = useQueryClient();
+  const users = useUsers();
+  const nameOf = (uid: string) => users.data?.find((u) => u.id === uid)?.name ?? "—";
+  // La fiche s'ouvre par-dessus le Gantt (/gantt/<id>) : on ne quitte pas la frise.
+  const openTask = (id: string) => navigate(`/gantt/${id}`);
   const [vue, setVue] = useState<"pole" | "global">("pole");
   const [zoom, setZoom] = useState<Zoom>("tout");
   const [liens, setLiens] = useState(true);
@@ -174,6 +180,7 @@ export function Gantt({ role }: { role: string }) {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       setDrag(null);
+      if (Math.abs(ev.clientX - x0) < 4) { openTask(t.id); return; } // un clic, pas un glissé
       // Glissé en jours calendaires → converti en jours ouvrés (5 pour 7).
       moveTask(t, Math.round((Math.round((ev.clientX - x0) / pxPerDay) * 5) / 7));
     };
@@ -181,6 +188,7 @@ export function Gantt({ role }: { role: string }) {
     window.addEventListener("pointerup", up);
   };
   const onBarKey = (t: GTask) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTask(t.id); return; }
     if (!pilot || t.milestone || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     e.preventDefault();
     moveTask(t, (e.key === "ArrowRight" ? 1 : -1) * (e.shiftKey ? 5 : 1));
@@ -197,9 +205,9 @@ export function Gantt({ role }: { role: string }) {
     const axis = AXES[t.axis];
     return (
       <div key={t.id} className="g-row" style={{ height: ROW_T }}>
-        <div className="g-label">
+        <button type="button" className="g-label g-open" onClick={() => openTask(t.id)} title="Ouvrir la fiche de la tâche">
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: t.critical ? 600 : 400, color: critSeul && !t.critical ? "var(--text-3)" : undefined }}>{t.title}</span>
-        </div>
+        </button>
         <div className="g-track" style={{ "--col-w": colW } as React.CSSProperties}>
           <Tooltip disabled={!!drag} openDelay={250} withArrow multiline maw={280} label={
             <span style={{ display: "grid", gap: 2 }}>
@@ -207,7 +215,7 @@ export function Gantt({ role }: { role: string }) {
               <span>{axis?.label ?? t.axis}, du {fmtDate(t.start)} au {fmtDate(t.end)}</span>
               <span>{STATUS_FR[t.status] ?? t.status}{isLate(t) ? ", en retard" : ""}</span>
               <span>{t.critical ? "Sur le chemin critique" : "Avec marge"}</span>
-              {pilot && <span style={{ opacity: 0.75 }}>Glisser ou flèches ← → : un jour ouvré (Maj : une semaine)</span>}
+              <span style={{ opacity: 0.75 }}>Cliquer : ouvrir la fiche{pilot ? ". Glisser ou flèches ← → : un jour ouvré (Maj : une semaine)" : ""}</span>
             </span>
           }>
             <div className="g-bar" role="button" tabIndex={0}
@@ -215,7 +223,7 @@ export function Gantt({ role }: { role: string }) {
               data-critical={t.critical || undefined} data-late={isLate(t) || undefined}
               data-dim={(critSeul && !t.critical) || undefined} data-draggable={pilot || undefined}
               data-impacted={impacted.has(t.id) || undefined} data-moved={moved.includes(t.id) || undefined}
-              onPointerDown={onBarDown(t)} onKeyDown={onBarKey(t)}
+              onPointerDown={onBarDown(t)} onKeyDown={onBarKey(t)} onClick={pilot ? undefined : () => openTask(t.id)}
               style={{ "--axis": axis?.color ?? "var(--text-3)", left: `${pct(t.start) + off}%`, width: `${Math.max(0.8, pctEnd(t.end) - pct(t.start))}%` } as React.CSSProperties} />
           </Tooltip>
         </div>
@@ -228,12 +236,13 @@ export function Gantt({ role }: { role: string }) {
     y += ROW_T;
     return (
       <div key={t.id} className="g-row" style={{ height: ROW_T }}>
-        <div className="g-label">
+        <button type="button" className="g-label g-open" onClick={() => openTask(t.id)} title="Ouvrir la fiche du jalon">
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600 }}>{t.title}</span>
           <span className="num" style={{ fontSize: 12, color: muted }}>{fmtDate(t.start)}</span>
-        </div>
+        </button>
         <div className="g-track" style={{ "--col-w": colW } as React.CSSProperties}>
-          <span className="g-ms" data-late={isLate(t) || undefined} style={{ left: `${pct(t.start)}%` }} role="img" aria-label={`Jalon ${t.title}, ${fmtDate(t.start)}`} />
+          <span className="g-ms" data-late={isLate(t) || undefined} style={{ left: `${pct(t.start)}%` }} role="button" tabIndex={0} aria-label={`Jalon ${t.title}, ${fmtDate(t.start)}. Ouvrir la fiche`}
+            onClick={() => openTask(t.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTask(t.id); } }} />
         </div>
       </div>
     );
@@ -350,6 +359,7 @@ export function Gantt({ role }: { role: string }) {
           </div>
         </div>
       </section>
+      {taskId && <TaskDetailSheet id={taskId} onClose={() => navigate("/gantt")} role={role} nameOf={nameOf} />}
     </>
   );
 }
