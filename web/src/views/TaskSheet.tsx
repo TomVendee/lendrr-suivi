@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconArrowBackUp, IconCheck, IconPencil, IconPlus, IconTrash } from "@tabler/icons-react";
 import { api, fmtDate, fmtH, initials, useMe, useSettings, useUsers, type Task } from "../api";
 import { Sheet } from "../Shell";
+import { TaskHours } from "./TaskHours";
 import { toastUndo } from "../motion";
 import { AXES, AxisChip, StatusPill, line, muted } from "../theme";
 
@@ -318,6 +319,8 @@ export function TaskDetailSheet({ id, onClose, role, nameOf }: {
             ))}
             {t.assignments.length === 0 && <p style={{ margin: 0, color: muted, fontSize: 14 }}>Personne n'est assigné.</p>}
           </section>
+
+          {!t.milestone && <TaskHours id={id} onSaved={() => { qc.invalidateQueries({ queryKey: ["task-hours", id] }); refreshAll(qc, id); }} />}
 
           <section aria-labelledby="deps-titre">
             <h3 id="deps-titre" style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 600 }}>Dépend de</h3>

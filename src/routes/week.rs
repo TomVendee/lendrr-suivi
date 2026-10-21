@@ -11,7 +11,7 @@ use serde_json::json;
 use super::{AppState, current_user};
 use crate::domain::{
     load::{Allocation, planned_load},
-    working_days::{project_week, today_paris, week_bounds},
+    working_days::{project_week, task_weeks, today_paris, week_bounds},
 };
 
 #[derive(Deserialize)]
@@ -183,4 +183,67 @@ pub async fn log_hours(
         Ok(_) => (StatusCode::OK, Json(json!({"ok": true}))).into_response(),
         Err(_) => (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-task"}))).into_response(),
     }
+}
+
+/// Mes heures sur une tâche, semaine par semaine (saisie depuis la fiche de la tâche).
+/// `can_log` : même règle que `log_hours` (assigné à la tâche, ou pilote). Les heures lues sont les miennes.
+pub async fn task_hours(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    axum::extract::Path(id): axum::extract::Path<uuid::Uuid>,
+) -> impl IntoResponse {
+    let Ok((uid, role)) = current_user(&s.pool, &headers).await else {
+        return (StatusCode::UNAUTHORIZED, Json(json!({"error": "unauthorized"}))).into_response();
+    };
+    let task: Option<(NaiveDate, NaiveDate)> =
+        sqlx::query_as("SELECT start_date, end_date FROM tasks WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&s.pool)
+            .await
+            .unwrap_or(None);
+    let Some((start, end)) = task else {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
+    };
+    let mine: Option<(String, f64)> = sqlx::query_as(
+        "SELECT role, planned_hours FROM assignments WHERE task_id = $1 AND user_id = $2",
+    )
+    .bind(id)
+    .bind(uid)
+    .fetch_optional(&s.pool)
+    .await
+    .unwrap_or(None);
+    let entries: Vec<(i32, f64)> = sqlx::query_as(
+        "SELECT week, hours FROM time_entries WHERE task_id = $1 AND user_id = $2 ORDER BY week",
+    )
+    .bind(id)
+    .bind(uid)
+    .fetch_all(&s.pool)
+    .await
+    .unwrap_or_default();
+    // Semaines de la tâche, plus celles où une saisie existe déjà hors de ces dates.
+    let mut weeks = task_weeks(start, end);
+    for (w, _) in &entries {
+        if !weeks.contains(w) {
+            weeks.push(*w);
+        }
+    }
+    weeks.sort_unstable();
+    let list: Vec<_> = weeks
+        .iter()
+        .map(|w| {
+            let (mon, sun) = week_bounds(*w);
+            let hours = entries.iter().find(|(ew, _)| ew == w).map_or(0.0, |(_, h)| *h);
+            json!({"week": w, "monday": mon, "sunday": sun, "hours": hours})
+        })
+        .collect();
+    let (my_role, planned) = mine.map_or((None, 0.0), |(r, h)| (Some(r), h));
+    Json(json!({
+        "can_log": my_role.is_some() || role == "pilot",
+        "my_role": my_role,
+        "planned": planned,
+        "total": entries.iter().fold(0.0, |acc, (_, h)| acc + h), // fold : une somme vide de `sum()` donne -0.0
+        "current_week": project_week(today_paris()),
+        "weeks": list,
+    }))
+    .into_response()
 }

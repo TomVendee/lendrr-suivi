@@ -59,6 +59,7 @@ fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
         .route("/api/dependencies", post(deps::create).delete(deps::delete))
         .route("/api/my-week", get(week::my_week))
         .route("/api/time-entries", post(week::log_hours))
+        .route("/api/tasks/{id}/hours", get(week::task_hours))
         .route("/api/import", post(import::import_asana))
         .route("/api/load", get(stats::load))
         .route("/api/capacities", get(stats::capacities).put(stats::set_capacity))

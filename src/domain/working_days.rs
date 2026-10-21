@@ -73,6 +73,14 @@ pub fn week_bounds(week: i32) -> (NaiveDate, NaiveDate) {
     (mon, mon + chrono::Duration::days(6))
 }
 
+/// Semaines projet couvertes par une tâche, du début à la fin inclus. Jamais avant S01, et au plus 52 semaines
+/// (une tâche mal datée ne doit pas produire une liste interminable).
+pub fn task_weeks(start: NaiveDate, end: NaiveDate) -> Vec<i32> {
+    let first = project_week(start).max(1);
+    let last = project_week(end).max(first);
+    (first..=last.min(first + 51)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,5 +109,19 @@ mod tests {
         let s = d(2026, 9, 28); // lundi
         assert_eq!(end_from_duration(s, 5), d(2026, 10, 2)); // vendredi
         assert_eq!(working_days_between(s, d(2026, 10, 2)), 5);
+    }
+
+    #[test]
+    fn task_weeks_cover_start_to_end() {
+        // Jour unique : une semaine. S09 = semaine du 19/10/2026.
+        assert_eq!(task_weeks(d(2026, 10, 21), d(2026, 10, 21)), vec![9]);
+        // Du ven 23/10 (S09) au mar 03/11 (S11) : trois semaines.
+        assert_eq!(task_weeks(d(2026, 10, 23), d(2026, 11, 3)), vec![9, 10, 11]);
+        // Avant le début du projet : on commence à S01.
+        assert_eq!(task_weeks(d(2026, 8, 1), d(2026, 8, 26)), vec![1]);
+        // Dates inversées : au moins la première semaine.
+        assert_eq!(task_weeks(d(2026, 10, 21), d(2026, 10, 5)), vec![9]);
+        // Plafond de 52 semaines.
+        assert_eq!(task_weeks(d(2026, 8, 24), d(2030, 1, 1)).len(), 52);
     }
 }
