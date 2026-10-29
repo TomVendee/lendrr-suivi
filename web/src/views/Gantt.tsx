@@ -8,7 +8,7 @@ import { PageSkeleton } from "../skeletons";
 import { api, fmtDate, useUsers } from "../api";
 import { navigate } from "../router";
 import { TaskDetailSheet } from "./TaskSheet";
-import { AXES, PageHead, card, muted } from "../theme";
+import { AXES, PageHead, STATUS, card, muted } from "../theme";
 import "../styles/gantt.css";
 
 interface GTask {
@@ -53,7 +53,16 @@ export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
   const [vue, setVue] = useState<"pole" | "global">("pole");
   const [zoom, setZoom] = useState<Zoom>("tout");
   const [liens, setLiens] = useState(true);
-  const [critSeul, setCritSeul] = useState(false);
+  // Surbrillance du chemin critique, désactivable ; le choix est retenu sur ce navigateur.
+  const [critOn, setCritOn] = useState(() => {
+    try { return localStorage.getItem("suivi-gantt-crit") !== "off"; } catch { return true; }
+  });
+  const toggleCrit = () => setCritOn((v) => {
+    try { localStorage.setItem("suivi-gantt-crit", v ? "off" : "on"); } catch { /* stockage indisponible */ }
+    return !v;
+  });
+  const [critSeulBox, setCritSeul] = useState(false);
+  const critSeul = critOn && critSeulBox;
   const [ouverts, setOuverts] = useState<Record<string, boolean>>({ HARD: true, SOFT: true, IA: true, PILOTAGE: true, VIDEO: true, JALONS: true });
   const [drag, setDrag] = useState<{ id: string; dx: number } | null>(null);
   const [moved, setMoved] = useState<string[]>([]);
@@ -199,14 +208,16 @@ export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
   let y = HEAD;
 
   const taskRow = (t: GTask) => {
-    places[t.id] = { x0: pct(t.start), x1: pctEnd(t.end), y: y + ROW_T / 2, crit: t.critical };
+    const crit = critOn && t.critical;
+    places[t.id] = { x0: pct(t.start), x1: pctEnd(t.end), y: y + ROW_T / 2, crit };
     y += ROW_T;
     const off = drag?.id === t.id ? (drag.dx / span) * 100 : 0;
     const axis = AXES[t.axis];
     return (
       <div key={t.id} className="g-row" style={{ height: ROW_T }}>
         <button type="button" className="g-label g-open" onClick={() => openTask(t.id)} title="Ouvrir la fiche de la tâche">
-          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: t.critical ? 600 : 400, color: critSeul && !t.critical ? "var(--text-3)" : undefined }}>{t.title}</span>
+          <span aria-hidden="true" title={STATUS_FR[t.status]} style={{ flex: "0 0 auto", width: 7, height: 7, borderRadius: "50%", marginLeft: -14, background: STATUS[t.status]?.dot ?? "var(--text-3)" }} />
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13, fontWeight: crit ? 600 : 400, color: (critSeul && !t.critical) || t.status === "done" ? "var(--text-3)" : undefined }}>{t.title}</span>
         </button>
         <div className="g-track" style={{ "--col-w": colW } as React.CSSProperties}>
           <Tooltip disabled={!!drag} openDelay={250} withArrow multiline maw={280} label={
@@ -219,8 +230,8 @@ export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
             </span>
           }>
             <div className="g-bar" role="button" tabIndex={0}
-              aria-label={`${t.title}, du ${fmtDate(t.start)} au ${fmtDate(t.end)}${t.critical ? ", chemin critique" : ""}${isLate(t) ? ", en retard" : ""}`}
-              data-critical={t.critical || undefined} data-late={isLate(t) || undefined}
+              aria-label={`${t.title}, du ${fmtDate(t.start)} au ${fmtDate(t.end)}, ${(STATUS_FR[t.status] ?? t.status).toLowerCase()}${t.critical ? ", chemin critique" : ""}${isLate(t) ? ", en retard" : ""}`}
+              data-critical={crit || undefined} data-late={isLate(t) || undefined} data-status={t.status}
               data-dim={(critSeul && !t.critical) || undefined} data-draggable={pilot || undefined}
               data-impacted={impacted.has(t.id) || undefined} data-moved={moved.includes(t.id) || undefined}
               onPointerDown={onBarDown(t)} onKeyDown={onBarKey(t)} onClick={pilot ? undefined : () => openTask(t.id)}
@@ -232,7 +243,7 @@ export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
   };
   const jalonRow = (t: GTask) => {
     // Un jalon est aussi une cible (et une source) de lien : pointe du losange à gauche.
-    places[t.id] = { x0: pct(t.start), x1: pct(t.start), y: y + ROW_T / 2, crit: t.critical };
+    places[t.id] = { x0: pct(t.start), x1: pct(t.start), y: y + ROW_T / 2, crit: critOn && t.critical };
     y += ROW_T;
     return (
       <div key={t.id} className="g-row" style={{ height: ROW_T }}>
@@ -326,15 +337,21 @@ export function Gantt({ role, taskId }: { role: string; taskId?: string }) {
       />
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, justifyContent: "space-between" }}>
         <div className="g-legend">
-          <span><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "var(--axis-soft)", boxShadow: "0 0 0 2px var(--surface-1), 0 0 0 3.5px var(--accent)" }} />Chemin critique</span>
-          <span><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "color-mix(in srgb, var(--axis-soft) 38%, var(--surface-1))" }} />Avec marge</span>
+          {critOn && <>
+            <span><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "var(--axis-soft)", boxShadow: "0 0 0 2px var(--surface-1), 0 0 0 3.5px var(--accent)" }} />Chemin critique</span>
+            <span><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, background: "color-mix(in srgb, var(--axis-soft) 38%, var(--surface-1))" }} />Avec marge</span>
+          </>}
           <span><span aria-hidden="true" style={{ width: 22, height: 10, borderRadius: 3, border: "2px solid var(--crit)", boxSizing: "border-box" }} />En retard</span>
+          <span style={{ gap: 10 }}>{(["todo", "in_progress", "blocked", "done"] as const).map((s) => (
+            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: STATUS[s].dot }} />{STATUS_FR[s]}</span>
+          ))}</span>
           <span><span aria-hidden="true" style={{ width: 9, height: 9, transform: "rotate(45deg)", background: "var(--text-1)", borderRadius: 2 }} />Jalon</span>
           {drag && impacted.size > 0 && <span style={{ color: "var(--warn-text)", fontWeight: 500 }}>Aperçu : {impacted.size} tâche{impacted.size > 1 ? "s vont" : " va"} suivre</span>}
         </div>
         <div style={{ display: "flex", gap: 16 }}>
           <Checkbox size="xs" label="Liens" checked={liens} onChange={() => setLiens(!liens)} />
-          <Checkbox size="xs" label="Chemin critique seulement" checked={critSeul} onChange={() => setCritSeul(!critSeul)} />
+          <Checkbox size="xs" label="Chemin critique" checked={critOn} onChange={toggleCrit} />
+          {critOn && <Checkbox size="xs" label="Seulement" checked={critSeulBox} onChange={() => setCritSeul(!critSeulBox)} />}
         </div>
       </div>
       <section aria-label="Diagramme de Gantt" style={{ ...card, padding: 0, overflow: "hidden" }}>

@@ -34,6 +34,10 @@
   border: 2px solid var(--crit);
   background-image: repeating-linear-gradient(135deg, color-mix(in oklch, var(--crit) 28%, transparent) 0 4px, transparent 4px 8px);
 }
+/* Statut : bloquée en pointillé rouge, terminée grisée (reste lisible, ne compte plus dans le regard). */
+.g-bar[data-status="blocked"] { border: 2px dashed var(--crit); }
+.g-bar[data-status="done"] { filter: grayscale(1); opacity: 0.55; }
+.g-bar[data-status="done"]:hover { filter: grayscale(1) brightness(1.06); }
 .g-bar[data-dim] { opacity: 0.18; }
 .g-bar[data-draggable] { cursor: grab; }
 .g-bar[data-draggable]:active { cursor: grabbing; }

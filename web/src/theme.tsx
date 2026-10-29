@@ -82,7 +82,7 @@ export function AxisChip({ code }: { code: string }) {
   );
 }
 
-const STATUS: Record<string, { label: string; bg: string; fg: string; dot: string }> = {
+export const STATUS: Record<string, { label: string; bg: string; fg: string; dot: string }> = {
   todo: { label: "À faire", bg: "var(--sunken)", fg: "var(--text-2)", dot: "var(--text-3)" },
   in_progress: { label: "En cours", bg: "var(--accent-soft)", fg: "var(--accent-text)", dot: "var(--accent)" },
   blocked: { label: "Bloquée", bg: "var(--crit-soft)", fg: "var(--crit-text)", dot: "var(--crit)" },
