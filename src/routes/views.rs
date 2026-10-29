@@ -63,8 +63,15 @@ pub async fn gantt(
                 "status": st, "milestone": ms, "critical": crit.contains(&id.to_string())})
         })
         .collect();
+    // Filtré par axe : seulement les liens entre tâches affichées.
+    let shown: HashSet<_> = tasks
+        .iter()
+        .filter(|(_, _, a, _, _, _, _)| q.axis.as_ref().is_none_or(|x| x == a))
+        .map(|(id, ..)| *id)
+        .collect();
     let links: Vec<_> = deps
         .iter()
+        .filter(|(p, q)| shown.contains(p) && shown.contains(q))
         .map(|(p, q)| json!({"from": p, "to": q}))
         .collect();
     (StatusCode::OK, Json(json!({"today": today_paris(), "tasks": items, "deps": links}))).into_response()

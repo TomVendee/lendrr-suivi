@@ -72,13 +72,13 @@ obtiennent eux-mêmes un token. L'application est son propre serveur d'autorisat
 | `get_task` | `task_id` | tout token | fiche complète : dates, statut, critère, description, jalon, collaborateurs et heures, dépendances amont |
 | `list_team` | aucun | tout token | équipe : `user_id`, nom, capacité par défaut et par semaine (sans e-mail) |
 | `list_load` | `from`, `to` (semaines, facultatifs) | tout token | plan de charge personne × semaine : prévu, réel, capacité |
-| `gantt_data` | `axis` (facultatif) | tout token | tâches, dépendances, marges, chemin critique |
+| `gantt_data` | `axis` (facultatif) | tout token | tâches, dépendances, marges, chemin critique ; avec `axis`, seulement les liens entre tâches de l'axe |
 | `meteo_data` | aucun | tout token | météo par axe |
 | `weekly_synthesis` | `week` (facultatif) | pilote | synthèse hebdo en texte à trous (D15) |
 | `create_task` | `title`, `axis_code`, `start_date`, `end_date`, `assignments[]` (+ `done_criteria`, `description`, `milestone`) | tout token, selon les réglages | pilote : publiée ; membre : révision en attente (ou refus selon les réglages) |
 | `update_task` | `task_id` + version complète (mêmes champs) | tout token, selon les réglages | pilote : publié, décalage des successeurs ; membre : modification en attente, l'ancienne version reste en vigueur |
 | `add_dependency` / `remove_dependency` | `pred_id`, `succ_id` | pilote | lien fin-début ; cycle refusé |
-| `set_capacity` | `user_id`, `week`, `hours` (0 à 80) | pilote | capacité d'une semaine (absence = 0 h) |
+| `set_capacity` | `user_id`, `week`, `hours` (0 à 80) | pilote | capacité d'une semaine (absence = 0 h) ; la capacité par défaut retire l'exception de la semaine |
 
 - Les outils ajoutés le 29/10/2026 (et `validate_task`) **appellent directement le handler REST** de l'écran
   (`src/mcp.rs`, fonction `rest`) : mêmes contrôles de rôle, de saisie et de validation, même réponse JSON.
