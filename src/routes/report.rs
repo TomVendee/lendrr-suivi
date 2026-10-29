@@ -15,7 +15,7 @@ use crate::domain::{
     working_days::{project_week, today_paris, week_bounds},
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 pub struct WeekQ {
     pub week: Option<i32>,
 }

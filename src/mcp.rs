@@ -1,6 +1,11 @@
 use std::sync::Arc;
 
-use axum::http::request::Parts;
+use axum::{
+    Json,
+    extract::{Path, Query, State},
+    http::request::Parts,
+    response::IntoResponse,
+};
 use rmcp::{
     ErrorData,
     handler::server::{tool::Extension, wrapper::Parameters},
@@ -20,7 +25,7 @@ use crate::domain::{
 
 #[derive(Clone)]
 pub struct SuiviMcp {
-    pool: sqlx::PgPool,
+    state: crate::routes::AppState,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -57,8 +62,16 @@ pub struct AddCommentArgs {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-pub struct ListCommentsArgs {
+pub struct TaskIdArgs {
     pub task_id: String,
+}
+
+#[derive(Deserialize, schemars::JsonSchema)]
+pub struct UpdateTaskArgs {
+    pub task_id: String,
+    /// Version complète de la tâche (tous les champs, comme à la création).
+    #[serde(flatten)]
+    pub task: crate::routes::tasks::TaskIn,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -97,6 +110,28 @@ fn text(v: serde_json::Value) -> CallToolResult {
     CallToolResult::success(vec![ContentBlock::text(v.to_string())])
 }
 
+fn task_id(s: &str) -> Result<uuid::Uuid, ErrorData> {
+    s.parse().map_err(|_| ErrorData::invalid_params("bad-task-id", None))
+}
+
+/// Pont vers un handler REST : mêmes contrôles de rôle et de saisie que l'écran (D18).
+/// Le handler lit le même `Authorization: Bearer` ; un statut d'erreur devient `-32602` avec son `error`.
+async fn rest(resp: impl IntoResponse) -> Result<CallToolResult, ErrorData> {
+    let resp = resp.into_response();
+    let status = resp.status();
+    let body = axum::body::to_bytes(resp.into_body(), 8 << 20)
+        .await
+        .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
+    let v: serde_json::Value = serde_json::from_slice(&body)
+        .unwrap_or_else(|_| serde_json::Value::String(String::from_utf8_lossy(&body).into()));
+    if status.is_success() {
+        Ok(text(v))
+    } else {
+        let reason = v.get("error").and_then(|e| e.as_str()).unwrap_or(status.as_str()).to_string();
+        Err(ErrorData::invalid_params(reason, None))
+    }
+}
+
 #[tool_router(server_handler)]
 impl SuiviMcp {
     /// Ma semaine : mes tâches, charge prévue/réelle/capacité.
@@ -106,7 +141,7 @@ impl SuiviMcp {
         Parameters(args): Parameters<MyWeekArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, _) = user_from_parts(&self.pool, &parts).await?;
+        let (uid, _) = user_from_parts(&self.state.pool, &parts).await?;
         let week = args.week.unwrap_or_else(|| project_week(today_paris()));
         let (wmon, wsun) = week_bounds(week);
         type Row = (uuid::Uuid, String, String, chrono::NaiveDate, chrono::NaiveDate, String, String, f64);
@@ -120,7 +155,7 @@ impl SuiviMcp {
             .bind(uid)
             .bind(wsun)
             .bind(wmon)
-            .fetch_all(&self.pool)
+            .fetch_all(&self.state.pool)
             .await
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         let mut allocs = vec![];
@@ -138,7 +173,7 @@ impl SuiviMcp {
         )
         .bind(uid)
         .bind(week)
-        .fetch_one(&self.pool)
+        .fetch_one(&self.state.pool)
         .await
         .unwrap_or(0.0);
         let capacity: f64 = sqlx::query_scalar(
@@ -147,7 +182,7 @@ impl SuiviMcp {
         )
         .bind(uid)
         .bind(week)
-        .fetch_one(&self.pool)
+        .fetch_one(&self.state.pool)
         .await
         .unwrap_or(4.0);
         Ok(text(serde_json::json!({
@@ -163,7 +198,7 @@ impl SuiviMcp {
         Parameters(args): Parameters<ListTasksArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let _ = user_from_parts(&self.pool, &parts).await?;
+        let _ = user_from_parts(&self.state.pool, &parts).await?;
         let mut q = "SELECT id::text, title, axis_code, start_date::text, end_date::text, status FROM tasks WHERE 1=1".to_string();
         if args.axis.is_some() {
             q += " AND axis_code = $1";
@@ -180,7 +215,7 @@ impl SuiviMcp {
             query = query.bind(st);
         }
         let rows = query
-            .fetch_all(&self.pool)
+            .fetch_all(&self.state.pool)
             .await
             .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
         Ok(text(serde_json::json!(rows
@@ -198,7 +233,7 @@ impl SuiviMcp {
         Parameters(args): Parameters<LogHoursArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
+        let (uid, role) = user_from_parts(&self.state.pool, &parts).await?;
         if !(0.0..=80.0).contains(&args.hours) {
             return Err(ErrorData::invalid_params("bad-hours", None));
         }
@@ -211,7 +246,7 @@ impl SuiviMcp {
         )
         .bind(task_id)
         .bind(uid)
-        .fetch_one(&self.pool)
+        .fetch_one(&self.state.pool)
         .await
         .unwrap_or(false);
         if !assigned && role != "pilot" {
@@ -225,7 +260,7 @@ impl SuiviMcp {
         .bind(uid)
         .bind(args.week)
         .bind(args.hours)
-        .execute(&self.pool)
+        .execute(&self.state.pool)
         .await
         .map_err(|_| ErrorData::invalid_params("bad-task", None))?;
         Ok(text(serde_json::json!({"ok": true})))
@@ -237,12 +272,12 @@ impl SuiviMcp {
         Parameters(args): Parameters<UpdateStatusArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
+        let (uid, role) = user_from_parts(&self.state.pool, &parts).await?;
         let task_id: uuid::Uuid = args
             .task_id
             .parse()
             .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
-        crate::routes::tasks::change_status(&self.pool, uid, &role, task_id, &args.status)
+        crate::routes::tasks::change_status(&self.state.pool, uid, &role, task_id, &args.status)
             .await
             .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
         Ok(text(serde_json::json!({"ok": true, "task_id": task_id, "status": args.status})))
@@ -254,12 +289,12 @@ impl SuiviMcp {
         Parameters(args): Parameters<AddCommentArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, _) = user_from_parts(&self.pool, &parts).await?;
+        let (uid, _) = user_from_parts(&self.state.pool, &parts).await?;
         let task_id: uuid::Uuid = args
             .task_id
             .parse()
             .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
-        crate::routes::tasks::post_comment(&self.pool, uid, task_id, &args.body, true)
+        crate::routes::tasks::post_comment(&self.state.pool, uid, task_id, &args.body, true)
             .await
             .map_err(|(_, reason)| ErrorData::invalid_params(reason, None))?;
         Ok(text(serde_json::json!({"ok": true, "task_id": task_id})))
@@ -268,23 +303,23 @@ impl SuiviMcp {
     #[tool(description = "Lire le fil de discussion d'une tache, du plus ancien au plus recent (auteur, texte, date). A consulter avant de commenter pour eviter les doublons")]
     async fn list_task_comments(
         &self,
-        Parameters(args): Parameters<ListCommentsArgs>,
+        Parameters(args): Parameters<TaskIdArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        user_from_parts(&self.pool, &parts).await?;
+        user_from_parts(&self.state.pool, &parts).await?;
         let task_id: uuid::Uuid = args
             .task_id
             .parse()
             .map_err(|_| ErrorData::invalid_params("bad-task-id", None))?;
         let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM tasks WHERE id = $1)")
             .bind(task_id)
-            .fetch_one(&self.pool)
+            .fetch_one(&self.state.pool)
             .await
             .unwrap_or(false);
         if !exists {
             return Err(ErrorData::invalid_params("bad-task", None));
         }
-        Ok(text(serde_json::Value::Array(crate::routes::tasks::comment_list(&self.pool, task_id).await)))
+        Ok(text(serde_json::Value::Array(crate::routes::tasks::comment_list(&self.state.pool, task_id).await)))
     }
 
     /// Lister les alertes (les siennes pour un membre, toutes pour le pilote).
@@ -294,54 +329,122 @@ impl SuiviMcp {
         Parameters(_): Parameters<NoArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
-        let alerts = crate::routes::stats::compute_alerts(&self.pool, uid, &role).await;
+        let (uid, role) = user_from_parts(&self.state.pool, &parts).await?;
+        let alerts = crate::routes::stats::compute_alerts(&self.state.pool, uid, &role).await;
         Ok(text(serde_json::json!({"alerts": alerts})))
     }
 
+    #[tool(description = "Lister les revisions en attente de validation (nouvelles taches proposees, modifications) avec leur contenu. Pilote, validateur ou suppleant")]
+    async fn list_revisions(&self, Extension(parts): Extension<Parts>) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::revisions::list(State(self.state.clone()), parts.headers).await).await
+    }
+
     /// Valider ou rejeter une tâche en attente (pilote, validateur, suppléant).
-    #[tool(description = "Valider ou rejeter une tache en attente de validation (pilote, validateur ou suppleant)")]
+    #[tool(description = "Valider ou rejeter une revision en attente (id donne par list_revisions). Pilote, validateur ou suppleant. Refuse sans exactement un lead")]
     async fn validate_task(
         &self,
         Parameters(args): Parameters<ValidateTaskArgs>,
         Extension(parts): Extension<Parts>,
     ) -> Result<CallToolResult, ErrorData> {
-        let (uid, role) = user_from_parts(&self.pool, &parts).await?;
-        if !crate::routes::settings::load(&self.pool).await.can_decide(uid, &role) {
-            return Err(ErrorData::invalid_params("not-a-validator", None));
-        }
-        let rev: uuid::Uuid = args
+        let rev = args
             .revision_id
             .parse()
             .map_err(|_| ErrorData::invalid_params("bad-revision-id", None))?;
-        let row: Option<(Option<uuid::Uuid>, serde_json::Value)> = sqlx::query_as(
-            "SELECT task_id, payload FROM task_revisions WHERE id=$1 AND status='pending'",
-        )
-        .bind(rev)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| ErrorData::internal_error(e.to_string(), None))?;
-        let Some((task_id, payload)) = row else {
-            return Err(ErrorData::invalid_params("not-found", None));
-        };
-        if !args.approve {
-            let _ = sqlx::query("UPDATE task_revisions SET status='rejected' WHERE id=$1")
-                .bind(rev)
-                .execute(&self.pool)
-                .await;
-            return Ok(text(serde_json::json!({"decision": "rejected"})));
-        }
-        match crate::routes::revisions::apply_payload(&self.pool, task_id, &payload).await {
-            Ok(a) => {
-                let _ = sqlx::query("UPDATE task_revisions SET status='validated' WHERE id=$1")
-                    .bind(rev)
-                    .execute(&self.pool)
-                    .await;
-                Ok(text(serde_json::json!({"decision": "validated", "task_id": a.id,
-                    "shifted": a.shifted, "milestones_threatened": a.threatened})))
-            }
-            Err(reason) => Err(ErrorData::invalid_params(reason, None)),
-        }
+        let input = crate::routes::revisions::DecideIn { approve: args.approve };
+        rest(crate::routes::revisions::decide(State(self.state.clone()), parts.headers, Path(rev), Json(input)).await).await
+    }
+
+    #[tool(description = "Fiche complete d'une tache : dates, statut, critere Termine quand, description, jalon, collaborateurs (lead, support, heures prevues), dependances amont")]
+    async fn get_task(
+        &self,
+        Parameters(args): Parameters<TaskIdArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let id = task_id(&args.task_id)?;
+        rest(crate::routes::tasks::get(State(self.state.clone()), parts.headers, Path(id)).await).await
+    }
+
+    #[tool(description = "Equipe : identifiant, nom, capacite par defaut et capacites par semaine (absences). Les identifiants servent aux collaborateurs d'une tache")]
+    async fn list_team(&self, Extension(parts): Extension<Parts>) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::stats::capacities(State(self.state.clone()), parts.headers).await).await
+    }
+
+    #[tool(description = "Plan de charge personne x semaine : heures prevues, reelles, capacite. Defaut : 2 semaines avant a 6 apres la semaine courante")]
+    async fn list_load(
+        &self,
+        Parameters(args): Parameters<crate::routes::stats::LoadQ>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::stats::load(State(self.state.clone()), parts.headers, Query(args)).await).await
+    }
+
+    #[tool(description = "Gantt : taches, dependances, marges et chemin critique (taches sans marge). Filtrable par axe")]
+    async fn gantt_data(
+        &self,
+        Parameters(args): Parameters<crate::routes::views::GanttQ>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::views::gantt(State(self.state.clone()), parts.headers, Query(args)).await).await
+    }
+
+    #[tool(description = "Meteo par axe : etat de chaque axe (avancement, retards, jalons)")]
+    async fn meteo_data(&self, Extension(parts): Extension<Parts>) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::views::meteo(State(self.state.clone()), parts.headers).await).await
+    }
+
+    #[tool(description = "Synthese hebdomadaire en texte a trous a relire (pilote). Defaut : semaine courante")]
+    async fn weekly_synthesis(
+        &self,
+        Parameters(args): Parameters<crate::routes::report::WeekQ>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::report::synthesis(State(self.state.clone()), parts.headers, Query(args)).await).await
+    }
+
+    #[tool(description = "Creer une tache. Pilote : publiee directement. Membre : proposee en attente de validation selon les reglages. Exactement un lead parmi les collaborateurs")]
+    async fn create_task(
+        &self,
+        Parameters(args): Parameters<crate::routes::tasks::TaskIn>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::tasks::create(State(self.state.clone()), parts.headers, Json(args)).await).await
+    }
+
+    #[tool(description = "Modifier une tache (version complete : lire get_task d'abord). Pilote : publie, avec decalage automatique des successeurs. Membre : modification en attente, l'ancienne version reste en vigueur")]
+    async fn update_task(
+        &self,
+        Parameters(args): Parameters<UpdateTaskArgs>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let id = task_id(&args.task_id)?;
+        rest(crate::routes::tasks::update(State(self.state.clone()), parts.headers, Path(id), Json(args.task)).await).await
+    }
+
+    #[tool(description = "Ajouter une dependance fin-debut (le predecesseur finit avant que le successeur commence). Pilote uniquement, cycle refuse")]
+    async fn add_dependency(
+        &self,
+        Parameters(args): Parameters<crate::routes::deps::DepIn>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::deps::create(State(self.state.clone()), parts.headers, Json(args)).await).await
+    }
+
+    #[tool(description = "Supprimer une dependance entre deux taches. Pilote uniquement")]
+    async fn remove_dependency(
+        &self,
+        Parameters(args): Parameters<crate::routes::deps::DepIn>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::deps::delete(State(self.state.clone()), parts.headers, Json(args)).await).await
+    }
+
+    #[tool(description = "Fixer la capacite d'une personne pour une semaine (absence = 0 h, 0 a 80 h). Pilote uniquement")]
+    async fn set_capacity(
+        &self,
+        Parameters(args): Parameters<crate::routes::stats::CapacityIn>,
+        Extension(parts): Extension<Parts>,
+    ) -> Result<CallToolResult, ErrorData> {
+        rest(crate::routes::stats::set_capacity(State(self.state.clone()), parts.headers, Json(args)).await).await
     }
 }
 
@@ -349,11 +452,11 @@ pub type McpService = StreamableHttpService<SuiviMcp, LocalSessionManager>;
 
 /// Monte le serveur MCP en HTTP streamable **stateless** (D18) : aucune session
 /// en mémoire, donc compatible répliques multiples et redémarrages.
-pub fn streamable_service(pool: sqlx::PgPool, app_host: Option<String>) -> McpService {
+pub fn streamable_service(state: crate::routes::AppState, app_host: Option<String>) -> McpService {
     // rmcp n'accepte que localhost par défaut (anti DNS-rebinding) : on ajoute l'hôte public.
     let hosts = ["localhost", "127.0.0.1", "::1"].map(String::from).into_iter().chain(app_host);
     StreamableHttpService::new(
-        move || Ok(SuiviMcp { pool: pool.clone() }),
+        move || Ok(SuiviMcp { state: state.clone() }),
         Arc::new(LocalSessionManager::default()),
         StreamableHttpServerConfig::default().with_legacy_session_mode(false).with_allowed_hosts(hosts),
     )

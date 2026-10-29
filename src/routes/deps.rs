@@ -11,9 +11,12 @@ use serde_json::json;
 use super::{AppState, current_user};
 use crate::domain::{deps::would_cycle, shift::{Node, cascade_shift}};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 pub struct DepIn {
+    /// Prédécesseur : doit finir avant que le successeur commence.
+    #[schemars(with = "String")]
     pub pred_id: uuid::Uuid,
+    #[schemars(with = "String")]
     pub succ_id: uuid::Uuid,
 }
 

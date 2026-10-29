@@ -33,12 +33,12 @@ pub struct AppState {
 /// Routeur : état construit depuis la config lue dans l'environnement.
 pub fn router(pool: PgPool, cfg: crate::config::Config) -> Router {
     let state = AppState {
-        pool: pool.clone(),
+        pool,
         setup_code: cfg.setup_code,
         secure_cookies: cfg.secure_cookies,
         public_url: cfg.public_url,
     };
-    let mcp_service = crate::mcp::streamable_service(pool, cfg.app_host);
+    let mcp_service = crate::mcp::streamable_service(state.clone(), cfg.app_host);
     build(state, mcp_service)
 }
 

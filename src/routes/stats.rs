@@ -17,7 +17,7 @@ use crate::domain::{
     working_days::{project_week, today_paris},
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 pub struct LoadQ {
     pub from: Option<i32>,
     pub to: Option<i32>,
@@ -323,9 +323,11 @@ pub async fn capacities(State(s): State<AppState>, headers: HeaderMap) -> impl I
     (StatusCode::OK, Json(out)).into_response()
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 pub struct CapacityIn {
+    #[schemars(with = "String")]
     pub user_id: uuid::Uuid,
+    /// Semaine projet (S01 = 24/08/2026). Absence = 0 h.
     pub week: i32,
     pub hours: f64,
 }

@@ -17,7 +17,7 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 - Servi par la même application que l'API et le front : un seul domaine.
 - Protection contre le DNS-rebinding de `rmcp` : les `Host` acceptés sont `localhost`, `127.0.0.1`, `::1`
   et l'hôte de `APP_URL`. Tout autre `Host` reçoit `403`.
-- État au 20/10/2026 : **en service**, 8 outils (tableau ci-dessous).
+- État au 29/10/2026 : **en service**, 20 outils (tableau ci-dessous).
 
 ## Authentification
 
@@ -67,21 +67,33 @@ obtiennent eux-mêmes un token. L'application est son propre serveur d'autorisat
 | `add_task_comment` | `task_id`, `body` (non vide, 2000 caractères max) | tout token | poste dans le fil de discussion de la tâche ; le texte enregistré est précédé de `[IA] ` |
 | `list_task_comments` | `task_id` | tout token | fil de discussion de la tâche, du plus ancien au plus récent : `author`, `body`, `at` ; à lire avant de commenter pour éviter les doublons |
 | `list_alerts` | aucun | tout token | alertes (les siennes pour un membre, toutes pour le pilote) |
-| `validate_task` | `revision_id`, `approve` | pilote, validateur ou suppléant (réglages) | valide ou rejette une révision en attente |
+| `list_revisions` | aucun | pilote, validateur ou suppléant | révisions en attente (création proposée ou modification) avec leur contenu ; donne le `revision_id` |
+| `validate_task` | `revision_id`, `approve` | pilote, validateur ou suppléant (réglages) | valide (publie, avec décalage) ou rejette une révision en attente ; refus sans exactement un `lead` |
+| `get_task` | `task_id` | tout token | fiche complète : dates, statut, critère, description, jalon, collaborateurs et heures, dépendances amont |
+| `list_team` | aucun | tout token | équipe : `user_id`, nom, capacité par défaut et par semaine (sans e-mail) |
+| `list_load` | `from`, `to` (semaines, facultatifs) | tout token | plan de charge personne × semaine : prévu, réel, capacité |
+| `gantt_data` | `axis` (facultatif) | tout token | tâches, dépendances, marges, chemin critique |
+| `meteo_data` | aucun | tout token | météo par axe |
+| `weekly_synthesis` | `week` (facultatif) | pilote | synthèse hebdo en texte à trous (D15) |
+| `create_task` | `title`, `axis_code`, `start_date`, `end_date`, `assignments[]` (+ `done_criteria`, `description`, `milestone`) | tout token, selon les réglages | pilote : publiée ; membre : révision en attente (ou refus selon les réglages) |
+| `update_task` | `task_id` + version complète (mêmes champs) | tout token, selon les réglages | pilote : publié, décalage des successeurs ; membre : modification en attente, l'ancienne version reste en vigueur |
+| `add_dependency` / `remove_dependency` | `pred_id`, `succ_id` | pilote | lien fin-début ; cycle refusé |
+| `set_capacity` | `user_id`, `week`, `hours` (0 à 80) | pilote | capacité d'une semaine (absence = 0 h) |
 
+- Les outils ajoutés le 29/10/2026 (et `validate_task`) **appellent directement le handler REST** de l'écran
+  (`src/mcp.rs`, fonction `rest`) : mêmes contrôles de rôle, de saisie et de validation, même réponse JSON.
 - Les erreurs reviennent en erreur JSON-RPC `-32602` avec la raison : `bad-status`, `bad-task-id`,
   `bad-task` (tâche inconnue), `not-found`, `lead-or-pilot-only`, `not-assigned`, `bad-hours`, `bad-comment`,
-  `not-a-validator`, `bad-or-revoked-token`.
+  `not-a-validator`, `bad-or-revoked-token`, `pilot-only`, `invalid-input`, `need-exactly-one-lead`,
+  `cycle-refused`, `bad-capacity`, `bad-revision-id`.
 - **Signature des commentaires** : un commentaire posté par le MCP est signé du nom du propriétaire du
   token, sans marque qui indique qu'il vient d'une IA.
 - Les identifiants de tâche (`task_id`) sont ceux renvoyés par `list_tasks` ou par l'API (`/api/tasks`).
 
-### Prévus, pas encore exposés
+### Volontairement hors MCP
 
-`get_task`, `create_task` / `update_task` (pilote : publié direct ; membre : révision en attente),
-`manage_dependencies` (pilote), `manage_assignments` (pilote), `list_load`, `gantt_data`, `meteo_data`,
-`get_baseline` / `get_export` (pilote). La REST les offre déjà
-pour la plupart ; ils arrivent dans le MCP avec leurs fonctions.
+Réglages, comptes utilisateurs, tokens, import Asana, baseline et export : actions d'administration réservées à
+l'écran, pour qu'une instruction cachée dans un commentaire ne puisse pas les déclencher par une IA.
 
 ## Exemples
 

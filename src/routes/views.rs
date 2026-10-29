@@ -14,7 +14,7 @@ use crate::domain::{
     working_days::today_paris,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, schemars::JsonSchema)]
 pub struct GanttQ {
     pub axis: Option<String>,
 }

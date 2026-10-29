@@ -63,19 +63,28 @@ pub struct TaskFilters {
     pub q: Option<String>,
 }
 
-#[derive(Deserialize, Validate, Clone)]
+// `JsonSchema` : ces entrées servent aussi d'arguments aux outils MCP (D18).
+#[derive(Deserialize, Validate, Clone, schemars::JsonSchema)]
 pub struct AssignmentIn {
+    /// Identifiant de la personne (voir `list_team`).
+    #[schemars(with = "String")]
     pub user_id: uuid::Uuid,
+    /// `lead` (pilote de la tâche, exactement un) ou `support` (appui).
     pub role: String,
     pub planned_hours: f64,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, schemars::JsonSchema)]
 pub struct TaskIn {
     #[validate(length(min = 1, max = 200))]
     pub title: String,
+    /// HARD, SOFT, IA, PILOTAGE ou VIDEO.
     pub axis_code: String,
+    /// AAAA-MM-JJ.
+    #[schemars(with = "String")]
     pub start_date: NaiveDate,
+    /// AAAA-MM-JJ, au plus tôt la date de début.
+    #[schemars(with = "String")]
     pub end_date: NaiveDate,
     #[validate(length(max = 2000))]
     pub done_criteria: Option<String>,
