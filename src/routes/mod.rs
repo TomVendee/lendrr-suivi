@@ -10,6 +10,7 @@ use sqlx::PgPool;
 pub(crate) mod deps;
 pub(crate) mod import;
 pub(crate) mod me;
+pub(crate) mod oauth;
 pub(crate) mod report;
 pub(crate) mod revisions;
 pub(crate) mod settings;
@@ -25,6 +26,8 @@ pub struct AppState {
     pub setup_code: Option<String>,
     /// `Secure` sur les cookies sauf en http local (ne change rien en prod https).
     pub secure_cookies: bool,
+    /// URL publique sans `/` final : émetteur OAuth et `resource` du MCP (D27).
+    pub public_url: String,
 }
 
 /// Routeur : état construit depuis la config lue dans l'environnement.
@@ -33,6 +36,7 @@ pub fn router(pool: PgPool, cfg: crate::config::Config) -> Router {
         pool: pool.clone(),
         setup_code: cfg.setup_code,
         secure_cookies: cfg.secure_cookies,
+        public_url: cfg.public_url,
     };
     let mcp_service = crate::mcp::streamable_service(pool, cfg.app_host);
     build(state, mcp_service)
@@ -51,6 +55,12 @@ fn build(state: AppState, mcp_service: crate::mcp::McpService) -> Router {
         .route("/api/tokens/{id}", delete(me::revoke_token))
         .route("/api/users", post(me::create_user).get(me::list_users))
         .route("/setup", post(setup::setup))
+        .route("/.well-known/oauth-protected-resource", get(oauth::protected_resource))
+        .route("/.well-known/oauth-protected-resource/mcp", get(oauth::protected_resource))
+        .route("/.well-known/oauth-authorization-server", get(oauth::authorization_server))
+        .route("/oauth/register", post(oauth::register))
+        .route("/oauth/authorize", get(oauth::authorize_page).post(oauth::authorize_submit))
+        .route("/oauth/token", post(oauth::token))
         .route("/api/tasks", get(tasks::list).post(tasks::create))
         .route("/api/tasks/{id}", get(tasks::get).put(tasks::update))
         .route("/api/tasks/{id}/status", post(tasks::set_status))
@@ -106,6 +116,7 @@ async fn hello() -> impl IntoResponse {
 }
 
 /// Barrière du MCP : aucune méthode (`initialize`, `tools/list`, `tools/call`) sans token valide non révoqué.
+/// Le `401` indique où trouver le serveur d'autorisation OAuth (RFC 9728, D27).
 async fn require_token(
     axum::extract::State(s): axum::extract::State<AppState>,
     req: axum::extract::Request,
@@ -124,9 +135,13 @@ async fn require_token(
     if ok {
         next.run(req).await
     } else {
+        let challenge = format!(
+            r#"Bearer resource_metadata="{}/.well-known/oauth-protected-resource/mcp""#,
+            s.public_url
+        );
         (
             StatusCode::UNAUTHORIZED,
-            [(axum::http::header::WWW_AUTHENTICATE, "Bearer")],
+            [(axum::http::header::WWW_AUTHENTICATE, challenge)],
             Json(json!({"error": "unauthorized"})),
         )
             .into_response()

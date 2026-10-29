@@ -23,7 +23,8 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
 
 - **Toutes** les méthodes (`initialize`, `tools/list`, `tools/call`) exigent
   `Authorization: Bearer ls_<base64url, 32 octets>`. Sans token valide et non révoqué : `401` avec
-  `WWW-Authenticate: Bearer`. Le cookie de session web n'est **pas** accepté sur `/mcp`.
+  `WWW-Authenticate: Bearer resource_metadata="<APP_URL>/.well-known/oauth-protected-resource/mcp"`
+  (découverte OAuth, voir plus bas). Le cookie de session web n'est **pas** accepté sur `/mcp`.
 - Un token est **personnel** : il agit au nom de son propriétaire, avec son rôle (`member` ou `pilot`).
 - **Gestion dans l'interface** : menu du compte › **Accès IA**. Chacun crée (avec un nom, par exemple
   « Claude Code »), liste et révoque ses propres tokens. La valeur n'est affichée qu'**une seule fois**,
@@ -33,6 +34,27 @@ Pas de clé d'API d'IA côté serveur (D15 intacte) : le MCP expose *nos* donné
   `created_at`, jamais la valeur), `DELETE /api/tokens/{id}` (révocation immédiate).
 - Stocké **hashé SHA-256** en base (`api_tokens`), révocable (`revoked`), scopes `full`
   (V1 : le rôle fait foi, pas de scopes fins).
+
+## Connecteur OAuth (D27) : claude.ai, Cowork, application mobile
+
+Ces clients n'envoient pas d'en-tête fixé à la main : ils découvrent le serveur d'autorisation et
+obtiennent eux-mêmes un token. L'application est son propre serveur d'autorisation **OAuth 2.1** minimal :
+
+| Route | Rôle |
+|---|---|
+| `GET /.well-known/oauth-protected-resource` (et `…/mcp`) | RFC 9728 : `resource` = `<APP_URL>/mcp`, serveur d'autorisation = `<APP_URL>` |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 : points d'entrée, `code` + PKCE `S256`, clients publics (`none`) |
+| `POST /oauth/register` | RFC 7591, sans authentification : `{redirect_uris, client_name}` → `{client_id}`. Redirections acceptées : `https://claude.ai/…`, `https://claude.com/…` et la boucle locale (`localhost`, `127.0.0.1`, `[::1]`, http ou https). Autre hôte : `invalid_redirect_uri`. 500 clients maximum. |
+| `GET /oauth/authorize` | Page de consentement (hors SPA, interdite en iframe). Connecté : bouton « Autoriser ». Sinon : e-mail + mot de passe sur la même page. Client ou `redirect_uri` inconnus : page d'erreur, pas de redirection. |
+| `POST /oauth/authorize` | Refus → `?error=access_denied&state=…` ; accord → `?code=…&state=…` (code à usage unique, 5 minutes, stocké hashé). |
+| `POST /oauth/token` | `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`, `code_verifier` → `{access_token, token_type: "Bearer"}`. Erreur : `invalid_grant`. |
+
+- Le token délivré est un **token `ls_…` ordinaire** (`api_tokens`, nommé d'après le client, par exemple
+  « Claude ») : même rôle que la personne, listé et révocable dans *Accès IA*. Pas d'expiration ni de
+  refresh token, comme les tokens créés à la main.
+- Pas de scopes : le rôle fait foi (V1).
+- **Ajout dans claude.ai** : Réglages › Connecteurs › Ajouter un connecteur personnalisé, URL
+  `https://planning.ipv6-sigl.fr/mcp`, puis se connecter sur la page de consentement.
 
 ## Outils exposés
 
@@ -84,4 +106,6 @@ Configuration client :
 - **Claude Code** : `claude mcp add --transport http --scope user lendrr https://planning.ipv6-sigl.fr/mcp --header "Authorization: Bearer <token>"`
   (le token est alors écrit dans `~/.claude.json`, hors dépôt).
 - **Autre client** : serveur MCP `streamable-http`, URL `https://planning.ipv6-sigl.fr/mcp`, en-tête `Authorization`.
-  Un client qui ne sait pas envoyer d'en-tête personnalisé (certains connecteurs web) ne peut pas se connecter.
+  Un client qui ne sait pas envoyer d'en-tête personnalisé passe par l'OAuth ci-dessus.
+- **Claude Code sans token collé** : `claude mcp add --transport http --scope user lendrr https://planning.ipv6-sigl.fr/mcp`,
+  puis `/mcp` › Authenticate (redirection vers la boucle locale).

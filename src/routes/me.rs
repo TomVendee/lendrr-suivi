@@ -151,22 +151,28 @@ pub async fn create_token(
     if input.validate().is_err() {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "invalid-input"}))).into_response();
     }
+    let label = input.label.unwrap_or_default();
+    let (id, token) = new_api_token(&s.pool, uid, label.trim()).await;
+    (StatusCode::CREATED, Json(json!({"id": id, "token": token}))).into_response()
+}
+
+/// Crée un token `ls_…` (32 octets aléatoires) et n'en garde que le hash. Sert aussi à l'OAuth (D27).
+pub(crate) async fn new_api_token(pool: &sqlx::PgPool, uid: uuid::Uuid, label: &str) -> (uuid::Uuid, String) {
     use base64::Engine;
     use rand::RngCore;
     let mut raw = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut raw);
     let token = format!("ls_{}", base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(raw));
-    let digest = super::sha256_hex(&token);
     let id: uuid::Uuid = sqlx::query_scalar(
         "INSERT INTO api_tokens (user_id, token_hash, label) VALUES ($1,$2,$3) RETURNING id",
     )
     .bind(uid)
-    .bind(digest)
-    .bind(input.label.unwrap_or_default().trim())
-    .fetch_one(&s.pool)
+    .bind(super::sha256_hex(&token))
+    .bind(label)
+    .fetch_one(pool)
     .await
     .unwrap();
-    (StatusCode::CREATED, Json(json!({"id": id, "token": token}))).into_response()
+    (id, token)
 }
 
 /// Ses tokens actifs (jamais la valeur, seulement nom et date de création).

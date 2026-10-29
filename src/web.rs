@@ -37,7 +37,7 @@ fn file(path: &str) -> Option<Response> {
 /// SPA : toute route inconnue non-/api retombe sur `web/dist/index.html`.
 pub async fn fallback(uri: Uri) -> impl IntoResponse {
     let path = uri.path();
-    if path.starts_with("/api/") || path == "/health" || path == "/ready" || path.starts_with("/mcp") {
+    if path.starts_with("/api/") || path == "/health" || path == "/ready" || path.starts_with("/mcp") || path.starts_with("/.well-known/") || path.starts_with("/oauth/") {
         return (StatusCode::NOT_FOUND, [(header::CONTENT_TYPE, "text/html")], format!("<h1>404</h1><p>{path} inconnu</p>").into_bytes()).into_response();
     }
     if path != "/" {

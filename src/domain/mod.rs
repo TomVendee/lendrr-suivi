@@ -4,6 +4,7 @@ pub mod alerts;
 pub mod cpm;
 pub mod deps;
 pub mod load;
+pub mod oauth;
 pub mod shift;
 pub mod synthesis;
 pub mod validation;

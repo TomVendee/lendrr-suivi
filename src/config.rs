@@ -9,6 +9,8 @@ pub struct Config {
     pub setup_code: Option<String>,
     /// Hôte public (depuis `APP_URL`), accepté par le MCP en plus de localhost.
     pub app_host: Option<String>,
+    /// URL publique sans `/` final (`APP_URL`, sinon localhost) : émetteur OAuth du connecteur MCP (D27).
+    pub public_url: String,
 }
 
 /// `https://planning.ipv6-sigl.fr/x` → `planning.ipv6-sigl.fr` (port conservé).
@@ -32,6 +34,10 @@ impl Config {
             secure_cookies: !std::env::var("APP_URL").unwrap_or_default().starts_with("http://"),
             setup_code: std::env::var("SETUP_CODE").ok().filter(|s| !s.is_empty()),
             app_host: std::env::var("APP_URL").ok().and_then(|u| host_of(&u)),
+            public_url: std::env::var("APP_URL")
+                .ok()
+                .filter(|u| !u.is_empty())
+                .map_or_else(|| format!("http://localhost:{port}"), |u| u.trim_end_matches('/').to_string()),
         }
     }
 }
