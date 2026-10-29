@@ -346,15 +346,31 @@ pub async fn set_capacity(
     if !(0.0..=80.0).contains(&input.hours) || input.week < 1 {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "bad-capacity"}))).into_response();
     }
-    let _ = sqlx::query(
-        "INSERT INTO capacity_overrides (user_id, week, hours) VALUES ($1,$2,$3)
-         ON CONFLICT (user_id, week) DO UPDATE SET hours = EXCLUDED.hours",
-    )
-    .bind(input.user_id)
-    .bind(input.week)
-    .bind(input.hours)
-    .execute(&s.pool)
-    .await;
+    let default: Option<f64> = sqlx::query_scalar("SELECT default_capacity_hours FROM users WHERE id=$1")
+        .bind(input.user_id)
+        .fetch_optional(&s.pool)
+        .await
+        .unwrap_or(None);
+    let Some(default) = default else {
+        return (StatusCode::NOT_FOUND, Json(json!({"error": "not-found"}))).into_response();
+    };
+    // Revenir à la capacité par défaut retire l'exception de la semaine.
+    let q = if input.hours == default {
+        sqlx::query("DELETE FROM capacity_overrides WHERE user_id=$1 AND week=$2")
+            .bind(input.user_id)
+            .bind(input.week)
+    } else {
+        sqlx::query(
+            "INSERT INTO capacity_overrides (user_id, week, hours) VALUES ($1,$2,$3)
+             ON CONFLICT (user_id, week) DO UPDATE SET hours = EXCLUDED.hours",
+        )
+        .bind(input.user_id)
+        .bind(input.week)
+        .bind(input.hours)
+    };
+    if q.execute(&s.pool).await.is_err() {
+        return (StatusCode::SERVICE_UNAVAILABLE, Json(json!({"error": "db"}))).into_response();
+    }
     (StatusCode::OK, Json(json!({"ok": true}))).into_response()
 }
 
